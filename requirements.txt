@@ -1,0 +1,15 @@
+# Core RL stack — SB3 2.x uses 'gymnasium', NOT the legacy 'gym'
+stable-baselines3[extra]>=2.3
+gymnasium[box2d]>=0.29
+torch>=2.1
+
+# Numerics & data
+numpy
+pandas
+pyyaml
+
+# Visualisation
+matplotlib
+
+# Tests
+pytest

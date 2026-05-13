@@ -1,0 +1,51 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# RL artefacts (auto-generated, don't commit)
+experiments/
+logs/
+models/*.zip
+models/**/*.zip
+models/**/*.pkl
+!models/.gitkeep
+!models/README.md
+runs/
+
+# Reports — keep figures referenced by the report, ignore intermediate scratch
+reports/_scratch/
+reports/*.aux
+reports/*.log
+reports/*.out
+
+# Video & large media
+*.mp4
+*.mov
+*.avi
+*.gif
+!reports/figures/*.gif
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

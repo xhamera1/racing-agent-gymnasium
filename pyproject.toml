@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "racing-agent-gymnasium"
+version = "0.1.0"
+description = "Autonomous racing agent trained with Soft Actor-Critic (SAC) on Gymnasium CarRacing-v3 — RL in continuous spaces."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [
+    { name = "Inteligencja Obliczeniowa — Projekt 5" },
+]
+keywords = ["reinforcement-learning", "sac", "gymnasium", "car-racing", "stable-baselines3", "continuous-control"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "gymnasium[box2d]",
+    "stable-baselines3[extra]",
+    "torch",
+    "numpy",
+    "pandas",
+    "pyyaml",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+notebooks = [
+    "notebook",
+    "ipykernel",
+]
+dev = [
+    "pytest",
+]
+
+[project.scripts]
+racing-train       = "racing_agent.scripts.train_single:main"
+racing-experiment  = "racing_agent.scripts.run_experiment:main"
+racing-evaluate    = "racing_agent.scripts.evaluate:main"
+racing-plot        = "racing_agent.scripts.plot_curves:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["racing_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

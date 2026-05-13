@@ -1,0 +1,26 @@
+# Hyperparameter set #2 -- aggressive learning rate + faster target update.
+# Tests the hypothesis: "can SAC learn CarRacing faster, at the cost of stability?"
+name: hp_high_lr
+
+# --- SAC core --------------------------------------------------------------
+learning_rate: 1.0e-3         # 3.3x baseline
+buffer_size: 100000
+learning_starts: 1000
+batch_size: 256
+tau: 0.02                     # 4x baseline -- faster target tracking
+gamma: 0.99
+train_freq: 1
+gradient_steps: 1
+ent_coef: "auto"
+target_update_interval: 1
+use_sde: false
+
+# --- Environment / wrappers (identical to baseline) -----------------------
+env:
+  n_envs: 1
+  grayscale: true
+  resize_to: 84
+  frame_stack: 4
+  clip_reward: false
+  continuous: true
+  domain_randomize: false
