@@ -1,0 +1,9 @@
+# Kaggle deps — Box2D installed separately in kaggle_run_all.py (needs swig).
+gymnasium>=1.0.0
+stable-baselines3[extra]>=2.3.0
+torch
+numpy
+pandas
+pyyaml
+matplotlib
+pygame>=2.1.0

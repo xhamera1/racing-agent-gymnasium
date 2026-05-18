@@ -1,4 +1,5 @@
-# Virtual environments
+# Build artefacts
+dist/
 .venv/
 venv/
 env/

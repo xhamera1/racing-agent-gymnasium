@@ -11,6 +11,6 @@ See Phase 3 of ``PLAN.md`` for details.
 """
 
 from racing_agent.training.hyperparams import load_config
-from racing_agent.training.train import Trainer
+from racing_agent.training.train import TrainResult, Trainer, train_result_summary
 
-__all__ = ["Trainer", "load_config"]
+__all__ = ["Trainer", "TrainResult", "load_config", "train_result_summary"]

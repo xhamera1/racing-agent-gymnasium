@@ -10,6 +10,32 @@
 
 ---
 
+## 0. Current status (2026-05-18)
+
+**Done locally:** Phases 0–3 (env, CNN policies, trainer, smoke tests). Phase 4 scripts + Kaggle bundle (`arch_light_cnn`, `kaggle_overrides.yaml`, import/export).
+
+**First Kaggle session — imported & plotted:**
+- `python scripts/import_kaggle_outputs.py --zip ~/Downloads/kaggle_outputs.zip`
+- `python scripts/plot_curves.py --arch arch_light_cnn`
+- **3 runs:** `hp_baseline` × seeds `0,1,2` × **20 000** timesteps (LightCNN, 64×64, frame_stack=2).
+- **Figures:** `reports/figures/learning_curve_hp_baseline.png`, `reports/figures/timing_table.csv`.
+- **Timing:** ~9 min/run on T4 (~0.027 s/step); episodes still very short on the curve (~20 ep.) because CarRacing episodes are long.
+- **Quality:** mean return ≈ **−35** at 20k steps — agent barely off random; **not yet drivable** for a demo.
+
+**Still missing for 4-pt tier:** `hp_high_lr`, `hp_large_batch`, more seeds, and ideally ≥ 50k steps (or honest report justification for reduced grid).
+
+**Preview (live):** `scripts/watch_agent.py` opens a **pygame window** — watch the car drive in real time (no mp4). Env wrappers are restored from `run_metadata.json`. Needs local Box2D.
+
+**Recommended next steps (priority order):**
+1. **More Kaggle sessions** — re-run notebook with `--skip-existing` so the grid continues (`hp_high_lr`, `hp_large_batch`, seeds 3+). Consider `--timesteps 50000` when a session fits (~25 min/run).
+2. **Re-import + replot** after each session: `import_kaggle_outputs.py` → `plot_curves.py --arch arch_light_cnn`.
+3. **Podgląd agenta** — `python scripts/watch_agent.py --arch arch_light_cnn --loop` (works now; przy 20k kroków jeszcze słabo jedzie).
+4. **Start `notebooks/03_final_report.ipynb`** — env + algorithm paragraphs, HP table, paste figures as they appear.
+5. **Phase 5 diagrams** — `plot_arch_diagram` for NatureCNN vs CustomDeepCNN (no extra training required for the schematic).
+6. **Phase 6 stats** — `python scripts/evaluate.py --arch arch_light_cnn` for deterministic eval JSON (report table).
+
+---
+
 ## 1. Project goal & grading mapping
 
 The lecturer's task list (PDF) defines three tiers. Our plan covers **all** of them so the project secures the maximum score (8 pts).
@@ -20,7 +46,7 @@ The lecturer's task list (PDF) defines three tiers. Our plan covers **all** of t
 | **4**  | Learning curves for ≥ **3 hyperparameter sets**, each with **10 seeds × ≥ 50 000 timesteps**; mean ± std curves; report training time | Phase 4 — `scripts/run_experiment.py`, `scripts/plot_curves.py`, `reports/`    |
 | **4**  | One-paragraph descriptions of env & algorithm, hyperparameter table, learning curves, episode/step time, comparison & justification  | Final report `reports/final_report.pdf` + `notebooks/03_final_report.ipynb`    |
 | **6**  | All of the above + ≥ **2 different network architectures** (schemes, layer types/sizes/activations, input/output description)        | Phase 5 — `src/racing_agent/policies/{nature_cnn,custom_cnn}.py` + `arch_*.yaml` |
-| **8**  | All of the above + save best agent, run **deterministic** simulation (`deterministic=True`), compare with training curve              | Phase 6 — `scripts/evaluate.py --deterministic`, `notebooks/03_final_report.ipynb` |
+| **8**  | All of the above + save best agent, run **deterministic** simulation (`deterministic=True`), compare with training curve              | Phase 6 — `scripts/evaluate.py`, `scripts/watch_agent.py`, `notebooks/03_final_report.ipynb` |
 
 ---
 
@@ -92,9 +118,9 @@ racing-agent-gymnasium/
 ├── scripts/                         # thin CLI wrappers (argparse)
 │   ├── train_single.py              # one (config, seed) → one run
 │   ├── run_experiment.py            # full sweep: configs × seeds
-│   ├── evaluate.py                  # deterministic / stochastic eval
+│   ├── evaluate.py                  # headless deterministic / stochastic stats
+│   ├── watch_agent.py               # live pygame preview (no video file)
 │   ├── plot_curves.py               # learning curves with mean ± std
-│   └── record_video.py              # mp4 of the trained agent racing
 │
 ├── notebooks/
 │   ├── 01_environment_exploration.ipynb
@@ -123,7 +149,7 @@ Each phase has **scope**, **deliverables** and **exit criteria**. Phases are des
 | Phase | Name                                    | Status       |
 | ----- | --------------------------------------- | ------------ |
 | 0     | Project bootstrap                       | ✅ DONE       |
-| 1     | Environment & wrappers                  | ⏳ PENDING    |
+| 1     | Environment & wrappers                  | ✅ DONE       |
 | 2     | Custom CNN feature extractor            | ⏳ PENDING    |
 | 3     | Training pipeline & callbacks           | ⏳ PENDING    |
 | 4     | Hyperparameter sweep (4-pt task)        | ⏳ PENDING    |
@@ -138,9 +164,9 @@ Each phase has **scope**, **deliverables** and **exit criteria**. Phases are des
 **Scope:** repo skeleton, dependency management, reproducibility primitives.
 
 * Create `pyproject.toml` (editable install, Python ≥ 3.10, < 3.13 — SB3 limit).
-* `requirements.txt` pinned: `gymnasium[box2d]`, `stable-baselines3[extra]`, `torch`, `numpy`, `pandas`, `matplotlib`, `tensorboard`, `pyyaml`, `moviepy` (for `record_video.py`), `pytest`, `jupyter`.
-* Set up `.gitignore` (models/, logs/, experiments/, `__pycache__`, `.venv`, `*.zip`, `*.mp4`).
-* `Makefile` targets: `setup`, `test`, `train`, `experiment`, `evaluate`, `plot`, `report`.
+* `requirements.txt` pinned: `gymnasium[box2d]`, `stable-baselines3[extra]`, `torch`, `numpy`, `pandas`, `matplotlib`, `tensorboard`, `pyyaml`, `pytest`, `jupyter`.
+* Set up `.gitignore` (models/, logs/, experiments/, `__pycache__`, `.venv`, `*.zip`).
+* `Makefile` targets: `setup`, `test`, `train`, `experiment`, `evaluate`, `watch`, `plot`, `report`.
 * Set up venv (`py -3.12 -m venv .venv`) and validate `python -c "from stable_baselines3 import SAC; import gymnasium as gym; gym.make('CarRacing-v3')"`.
 
 **Exit criteria:** `pip install -e .` succeeds; `pytest tests/ -k smoke` passes; SB3 + Box2D imports cleanly on Windows.
@@ -159,30 +185,31 @@ Each phase has **scope**, **deliverables** and **exit criteria**. Phases are des
 
 ---
 
-### Phase 1 — Environment & wrappers `⏳ PENDING` (Day 2–3)
+### Phase 1 — Environment & wrappers `✅ DONE` (Day 2–3)
 
 **Scope:** wrap `CarRacing-v3` for stable visual RL.
 
-* `env/make_env.py::make_car_racing(...)` — factory accepting `n_envs`, `seed`, `monitor_dir`, `wrapper_config`. Returns `VecEnv` (`SubprocVecEnv` if `n_envs > 1`, else `DummyVecEnv`).
+* `env/make_env.py::make_car_racing(...)` — factory accepting `n_envs`, `seed`, `monitor_dir`, `wrapper_config`. Returns `DummyVecEnv` / `SubprocVecEnv` (no `VecTransposeImage`: `FrameStackObservation` on 2-D grayscale already yields **CxHxW** `(k,84,84)`).
+* Also `make_car_racing_single(...)` — scalar env for `check_env`, notebooks, debugging.
 * `env/wrappers.py`:
-  * `GrayScaleObservation` (96×96×3 → 96×96×1) — colour is not informative on the track.
-  * `ResizeObservation` (96×96 → 84×84) — Nature CNN convention.
-  * `FrameStack(k=4)` — recovers velocity / yaw rate from pixels.
-  * `ClipReward` (optional) — clip to `[-1, 1]` for value-target stability.
-* Register helper `make_car_racing(continuous=True)` (the brief explicitly requires continuous).
-* Sanity check: random policy ≥ 1 episode, env passes `gymnasium.utils.env_checker`.
+  * `GrayScaleObservation` (**96×96×3 → 96×96**, `keep_dim=False`) — avoids Gymnasium resize/stack bug with phantom `(H,W,1)` vs `(H,W)` mismatch.
+  * `ResizeObservation` (96×96 → 84×84) — Nature CNN convention (`shape=` or `size=`).
+  * `FrameStack(k=4)` — stacks frames into `(k,H,W)`; recovers approximate motion cues.
+  * `ClipReward` (optional) — subclasses Gymnasium clipper (`RecordConstructorArgs`–safe for `env.spec.make()` replay).
+* `make_car_racing(continuous=True)` by default — continuous control required by the assignment.
+* Sanity check: pytest covers random `VecEnv` steps; scalar env passes `gymnasium.utils.env_checker`.
 
 **Exit criteria:** `notebooks/01_environment_exploration.ipynb` shows: (1) action/obs spec, (2) a few frames after wrappers, (3) random-agent reward distribution over 20 episodes, (4) measured **avg step time** and **avg episode time** (required by the report).
 
 **Completed deliverables:**
-- [ ] `env/make_env.py` — `make_car_racing()` factory (DummyVecEnv / SubprocVecEnv)
-- [ ] `env/wrappers.py` — GrayScaleObservation, ResizeObservation, FrameStack, ClipReward
-- [ ] `tests/test_env.py` — unskipped and passing
-- [ ] `notebooks/01_environment_exploration.ipynb` — frames, timing, action/obs spec
+- [x] `env/make_env.py` — `make_car_racing()` + `make_car_racing_single()`
+- [x] `env/wrappers.py` — GrayScaleObservation, ResizeObservation, FrameStack, ClipReward (+ `merge_wrapper_kwargs`)
+- [x] `tests/test_env.py` — full suite incl. `check_env` remake + Subproc sanity
+- [x] `notebooks/01_environment_exploration.ipynb` — specs, visualization, histogram, timings
 
 ---
 
-### Phase 2 — Custom CNN feature extractor `⏳ PENDING` (Day 3)
+### Phase 2 — Custom CNN feature extractor `DONE` (Day 3)
 
 **Scope:** define both feature extractors *before* the heavy experiments so a single training pipeline can swap them via config.
 
@@ -202,14 +229,14 @@ Each phase has **scope**, **deliverables** and **exit criteria**. Phases are des
 **Exit criteria:** `tests/test_policies.py` instantiates both, forward-passes a `(B, 4, 84, 84)` tensor, asserts output shape.
 
 **Completed deliverables:**
-- [ ] `policies/nature_cnn.py` — `NatureCNN` re-export / thin wrapper
-- [ ] `policies/custom_cnn.py` — `CustomDeepCNN` (BN + adaptive avg pool)
-- [ ] `tests/test_policies.py` — unskipped and passing
-- [ ] Architecture layer tables documented (for report)
+- [x] `policies/nature_cnn.py` — `NatureCNN` re-export / thin wrapper
+- [x] `policies/custom_cnn.py` — `CustomDeepCNN` (BN + adaptive avg pool)
+- [x] `tests/test_policies.py` — unskipped and passing
+- [x] Architecture layer tables documented (for report) — ``NATURE_CNN_LAYER_ROWS`` / ``CUSTOM_DEEP_CNN_LAYER_ROWS`` + ``utils/plotting.py::plot_arch_diagram``
 
 ---
 
-### Phase 3 — Training pipeline & callbacks `⏳ PENDING` (Day 4)
+### Phase 3 — Training pipeline & callbacks `DONE` (Day 4)
 
 **Scope:** one trainer, two configs (hp_*, arch_*), full reproducibility.
 
@@ -217,7 +244,7 @@ Each phase has **scope**, **deliverables** and **exit criteria**. Phases are des
 * `training/train.py::Trainer`:
   * Builds env, model, callbacks; runs `model.learn(total_timesteps)`.
   * Persists: final model, **best model** (`EvalCallback`), checkpoints (`CheckpointCallback` every 10k steps), `Monitor` CSVs, TensorBoard logs.
-  * Outputs a `run_metadata.json` with: `run_id`, `config`, `seed`, `total_timesteps`, `wall_clock`, `mean_step_time`, `git_hash`.
+  * Outputs a ``run_metadata.json`` with: ``run_id``, ``config``, ``seed``, ``total_timesteps``, ``wall_clock_s``, ``mean_step_time_s``, ``mean_episode_time_s``, ``git_hash``.
 * `training/callbacks.py`:
   * `StepTimingCallback` — measures avg step/episode time (required by report).
   * `EvalSaveBestCallback` — wraps SB3 `EvalCallback` with our run-dir convention.
@@ -226,16 +253,20 @@ Each phase has **scope**, **deliverables** and **exit criteria**. Phases are des
 **Exit criteria:** a 5 000-step smoke run finishes < 5 min on CPU, all output files materialise in `experiments/<run_id>/`.
 
 **Completed deliverables:**
-- [ ] `training/hyperparams.py` — `load_config()` deep-merging HP + arch YAML
-- [ ] `training/train.py::Trainer` — builds env + SAC + callbacks, calls `model.learn()`
-- [ ] `training/callbacks.py` — `StepTimingCallback`, `EvalSaveBestCallback`
-- [ ] `scripts/train_single.py` — fully wired (not stub)
-- [ ] `experiments/<run_id>/run_metadata.json` produced on smoke run
-- [ ] `make smoke` completes < 5 min
+- [x] ``training/hyperparams.py`` — ``load_config()`` deep-merging HP + arch YAML
+- [x] ``training/train.py::Trainer`` — builds env + SAC + callbacks, calls ``model.learn()``
+- [x] ``training/callbacks.py`` — ``StepTimingCallback``, ``EvalSaveBestCallback``
+- [x] ``scripts/train_single.py`` — fully wired (not stub); optional ``experiments/<run_id>/trainer`` tweaks via YAML ``trainer`` block
+- [x] ``experiments/<run_id>/run_metadata.json`` produced after each finished run (+ ``utils/seeding.py`` + ``utils/io.py`` scaffolding)
+- [x] ``make smoke`` invokes the same CLI (5 000 steps; completes in < 5 min on CPU when Box2D + SB3 deps are installed)
 
 ---
 
-### Phase 4 — Hyperparameter sweep — **the 4-point deliverable** `⏳ PENDING` (Day 5–9)
+### Phase 4 — Hyperparameter sweep — **the 4-point deliverable** `IN PROGRESS` (Day 5–9)
+
+**Kaggle fast profile** (when CPU/local time is insufficient): see [`kaggle/README.md`](kaggle/README.md) and [`notebooks/02_kaggle_hp_sweep.ipynb`](notebooks/02_kaggle_hp_sweep.ipynb). Uses `arch_light_cnn` + `kaggle_overrides.yaml` (~9 min/run @ 20k steps on T4; ~25 min @ 50k). Default notebook runner: 3 configs × seeds 0–3, `--max-runs 3` per session → **import zip after each session**.
+
+**Session 1 (2026-05-18):** 3/30 target runs — `hp_baseline` seeds 0–2 @ 20k. Imported; baseline curve + timing table generated.
 
 **Scope:** **3 HP sets × 10 seeds × ≥ 50 000 timesteps = 30 runs**. This phase is the bulk of compute.
 
@@ -257,14 +288,17 @@ All three keep `arch_nature_cnn` fixed (we isolate HP effects from architecture 
 * `reports/figures/timing_table.csv` — wall-clock & step/episode time per config.
 
 **Completed deliverables:**
-- [ ] 30 training runs completed (3 configs × 10 seeds × ≥ 50 000 steps)
-- [ ] `scripts/run_experiment.py` — fully wired (not stub)
-- [ ] `scripts/plot_curves.py` — fully wired
-- [ ] `reports/figures/learning_curve_hp_baseline.png`
-- [ ] `reports/figures/learning_curve_hp_high_lr.png`
-- [ ] `reports/figures/learning_curve_hp_large_batch.png`
-- [ ] `reports/figures/learning_curve_compare.png`
-- [ ] `reports/figures/timing_table.csv`
+- [ ] 30 training runs completed (3 configs × 10 seeds × ≥ 50 000 steps) — **3/30 done** (Kaggle session 1; reduced timesteps)
+- [x] Kaggle workflow — bundle, notebook, `import_kaggle_outputs.py`, `export_kaggle_outputs.py`
+- [x] ``scripts/run_experiment.py`` — grid runner with ``--skip-existing``, ``--dry-run``, ``--n-jobs``, ``--max-runs``, ``--overrides``
+- [x] ``scripts/plot_curves.py`` — Monitor CSV aggregation + timing table
+- [x] ``utils/plotting.py`` — ``plot_learning_curve``, ``plot_hp_comparison``, ``build_timing_table_rows``
+- [x] Monitor CSV path fix (``monitor_<rank>.monitor.csv``; legacy ``*.csv.monitor.csv`` still discovered)
+- [x] ``reports/figures/learning_curve_hp_baseline.png`` (3 seeds, arch_light_cnn, 20k)
+- [ ] ``reports/figures/learning_curve_hp_high_lr.png`` (after more Kaggle sessions)
+- [ ] ``reports/figures/learning_curve_hp_large_batch.png`` (after more Kaggle sessions)
+- [ ] ``reports/figures/learning_curve_compare.png`` (needs ≥ 2 HP sets)
+- [x] ``reports/figures/timing_table.csv`` (partial — baseline only so far)
 
 ---
 
@@ -288,24 +322,38 @@ All three keep `arch_nature_cnn` fixed (we isolate HP effects from architecture 
 
 ---
 
-### Phase 6 — Best agent & deterministic evaluation — **the 8-point deliverable** `⏳ PENDING` (Day 13–14)
+### Phase 6 — Best agent, live preview & deterministic evaluation — **the 8-point deliverable** `IN PROGRESS`
 
-**Scope:** select the best saved checkpoint across all runs, evaluate **with `deterministic=True`** and compare with the training curve.
+**Scope:** select the best saved checkpoint, **watch it drive live** in a pygame window, and run headless **deterministic** rollouts for the report table / training-curve comparison.
 
-* `scripts/evaluate.py --run-id <best_run> --episodes 50 --deterministic` and `--no-deterministic` (sanity comparison).
-* Reports: mean / median / std / min / max reward, episode length distribution, success rate (lap completion if `lap_complete_percent` reached).
-* Plot **deterministic eval reward** as a horizontal band on the training curve to show stoch-vs-det gap.
-* `scripts/record_video.py --run-id <best_run> --episodes 3 --deterministic` → `reports/figures/agent_demo.mp4` (or `.gif` if size permits).
+* `scripts/watch_agent.py` — opens `render_mode="human"`; env kwargs auto-loaded from `run_metadata.json`. Use `--loop` for continuous preview, `--fast` to skip real-time pacing.
+* `scripts/evaluate.py --model <path/to/best_model.zip> --episodes 50 --deterministic` (and `--stochastic` sanity check) — no rendering; writes `reports/figures/eval_summary.json`.
+* Plot **deterministic eval reward** as a horizontal band on the training curve to show stoch-vs-det gap (report notebook).
 
-**Exit criteria:** the 8-pt task box ticked: best model identified, deterministic numbers in report, video saved, comparison with training curve visualised.
+**Usage (local, Box2D required):**
+
+```bash
+# Auto-pick best imported run (highest recent Monitor return).
+python scripts/watch_agent.py --arch arch_light_cnn --loop
+
+# Specific experiment folder.
+python scripts/watch_agent.py --run-dir experiments/hp_baseline__arch_light_cnn__seed00__...
+
+# Headless stats for the report.
+python scripts/evaluate.py --arch arch_light_cnn --episodes 50 --deterministic
+```
+
+**Design choice:** no mp4/gif export — live preview only (lighter deps, faster iteration). Screenshot from the pygame window is enough for the report if needed.
+
+**Exit criteria:** best model identified, deterministic numbers in report, live preview verified, comparison with training curve visualised.
 
 **Completed deliverables:**
-- [ ] `scripts/evaluate.py` — fully wired (deterministic + stochastic modes)
-- [ ] `scripts/record_video.py` — fully wired
-- [ ] `models/best/best_model.zip` committed / documented
-- [ ] `reports/figures/eval_summary.json` — mean/median/std/min/max
-- [ ] `reports/figures/agent_demo.mp4` (or `.gif`)
-- [ ] Det. eval band plotted on top of training curve
+- [x] `scripts/watch_agent.py` — live pygame preview (`--loop`, `--run-dir`, auto-pick)
+- [x] `scripts/evaluate.py` — headless deterministic / stochastic stats → JSON
+- [x] `src/racing_agent/evaluation/evaluator.py` — `evaluate_agent()`, `watch_agent()`, checkpoint resolution
+- [ ] `models/best/best_model.zip` committed / documented (optional; checkpoints live under `experiments/`)
+- [ ] `reports/figures/eval_summary.json` — after agent drives reasonably well
+- [ ] Det. eval band plotted on top of training curve (notebook)
 
 ---
 
@@ -322,14 +370,14 @@ All three keep `arch_nature_cnn` fixed (we isolate HP effects from architecture 
   6. **Deterministic evaluation** — table, histogram, comparison band on training curve.
   7. **Discussion & conclusions** — which HP / architecture is the winner *and why*.
 * Export to `reports/final_report.pdf` (`jupyter nbconvert --to pdf`).
-* Update `README.md` with headline numbers, demo gif, citation of the PDF brief.
+* Update `README.md` with headline numbers, screenshot of live preview, citation of the PDF brief.
 
 **Exit criteria:** PDF compiles, links in README work, notebook re-runs end-to-end with `Run All` on a clean kernel.
 
 **Completed deliverables:**
 - [ ] `notebooks/03_final_report.ipynb` — all 7 sections complete
 - [ ] `reports/final_report.pdf` — renders without errors
-- [ ] `README.md` — headline numbers, demo gif/video link, quick-start verified
+- [ ] `README.md` — headline numbers, live-preview screenshot, quick-start verified
 - [ ] Submission on MS Teams before 2026-06-04
 
 ---
@@ -342,7 +390,7 @@ CarRacing-v3 with `CnnPolicy` SAC is **expensive**. Realistic numbers (Win11, RT
 * `50 000` timesteps → **~15–25 min wall-clock** per run.
 * **30 runs (Phase 4) → ~ 7.5 – 12 h** of compute.
 * **+10 runs (Phase 5) → ~ 2.5 – 4 h**.
-* **+ misc** (eval, video, retries) → ~ 2 h.
+* **+ misc** (eval, live preview, retries) → ~ 2 h.
 * **Total compute budget: ~ 12 – 18 h** — fits comfortably within the 3-week window before the 2026-06-04 deadline.
 
 If GPU is unavailable, we drop to ~600 steps/s CPU → ~ 90 min / run → would force `n_envs=4` SubprocVecEnv parallelism (already supported by `make_car_racing`).
@@ -357,7 +405,7 @@ If GPU is unavailable, we drop to ~600 steps/s CPU → ~ 90 min / run → would 
 | 4      | 3     | trainer, callbacks, smoke run |
 | 5–9    | 4     | 30 runs, learning curves, timing |
 | 10–12  | 5     | 10 runs Architecture B, arch_compare |
-| 13–14  | 6     | best-model eval, video, det-vs-stoch |
+| 13–14  | 6     | best-model eval, live preview, det-vs-stoch |
 | 15–16  | 7     | notebook → PDF → README polish |
 | +1–2   | —     | buffer / re-runs / formatting     |
 
@@ -393,7 +441,7 @@ If GPU is unavailable, we drop to ~600 steps/s CPU → ~ 90 min / run → would 
 * [ ] **4-pt task:** 3 HP sets × 10 seeds × ≥ 50 000 timesteps — mean ± std learning curves saved.
 * [ ] **4-pt task:** report contains env paragraph, algorithm paragraph, HP table, learning curves, avg step/episode time, justified comparison.
 * [ ] **6-pt task:** 2 architectures with diagrams (layers, sizes, activations, I/O), learning curves A vs B.
-* [ ] **8-pt task:** best agent saved (`models/best/best_model.zip`), deterministic eval table, comparison vs training curve, demo video.
+* [ ] **8-pt task:** best agent saved, deterministic eval table, comparison vs training curve, live preview (`watch_agent.py`).
 * [ ] `reports/final_report.pdf` exists and renders correctly.
 * [ ] `README.md` shows headline numbers, quick-start, demo gif.
 * [ ] Submitted on MS Teams before **2026-06-04**.

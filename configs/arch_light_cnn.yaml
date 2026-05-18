@@ -1,0 +1,20 @@
+# Architecture C — lightweight CNN for Kaggle / fast HP sweeps (Phase 4 budget).
+# ~5–10× fewer conv params than NatureCNN; pair with configs/kaggle_overrides.yaml.
+name: arch_light_cnn
+
+policy: "CnnPolicy"
+
+features_extractor:
+  class: "LightCNN"
+  kwargs:
+    features_dim: 128
+
+# Smaller SAC heads — less GPU/CPU time per gradient step.
+net_arch:
+  pi: [128]
+  qf: [128]
+
+# Layer schema (C=2, H=W=64 after kaggle_overrides env block):
+#   Conv(16, 8, s=4) + ReLU  -> (16, 15, 15)
+#   Conv(32, 4, s=2) + ReLU  -> (32,  6,  6)
+#   Flatten -> Linear(128) + ReLU

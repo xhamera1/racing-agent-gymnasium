@@ -5,7 +5,7 @@ name: hp_large_batch
 
 # --- SAC core --------------------------------------------------------------
 learning_rate: 3.0e-4
-buffer_size: 50000            # half of baseline -- smoother but more on-policy
+buffer_size: 300000            # 3·10⁵ — PLAN.md Phase 4
 learning_starts: 2000
 batch_size: 512               # 2x baseline
 tau: 0.005

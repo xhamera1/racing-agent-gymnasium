@@ -2,14 +2,12 @@
 
 | Notebook                              | Phase   | Purpose                                                                                                  |
 | ------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------- |
-| `01_environment_exploration.ipynb`    | 1       | Inspect `CarRacing-v3`: observation / action specs, render a few frames, measure avg step & episode time.|
+| `01_environment_exploration.ipynb`    | 1 ✅     | Inspect `CarRacing-v3`: specs, stacked-frame visualization, random-policy histogram, timings.           |
 | `02_training_analysis.ipynb`          | 4 – 5   | Load `Monitor` CSVs from `experiments/`, ad-hoc plots, sanity checks.                                    |
 | `03_final_report.ipynb`               | 7       | **★ Project delivery ★** — single source of truth for the PDF report.                                    |
 
-To create a notebook, open the corresponding file in Jupyter / VS Code /
-Cursor and start a fresh kernel using `.venv (Python 3.12)`. The files are
-intentionally not committed at bootstrap; they will be authored as their
-parent phases land (see `PLAN.md`).
+Launch the kernel from the project `.venv` (Python **3.12**). Notebook `01`
+is ready (Phase 1); `02` and `03` are added in later phases (`PLAN.md`).
 
 > Render the final report to PDF with:
 >

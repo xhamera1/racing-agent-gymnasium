@@ -6,7 +6,7 @@ PYTHON ?= python
 TIMESTEPS ?= 50000
 SEEDS ?= 0 1 2 3 4 5 6 7 8 9
 
-.PHONY: help setup test smoke train experiment evaluate plot video report clean
+.PHONY: help setup test smoke train experiment evaluate watch plot report clean
 
 help:
 	@echo "Targets:"
@@ -15,9 +15,9 @@ help:
 	@echo "  smoke       - 5 000-step training run to verify the pipeline"
 	@echo "  train       - single training run (HP=hp_baseline, ARCH=arch_nature_cnn, SEED=0)"
 	@echo "  experiment  - full HP sweep: 3 configs x 10 seeds x \$$(TIMESTEPS) steps"
-	@echo "  evaluate    - deterministic evaluation of the best agent"
+	@echo "  evaluate    - deterministic evaluation of the best agent (headless stats)"
+	@echo "  watch       - live pygame preview of the best agent"
 	@echo "  plot        - regenerate learning-curve figures"
-	@echo "  video       - record a demo mp4 of the best agent"
 	@echo "  report      - render notebooks/03_final_report.ipynb to PDF"
 	@echo "  clean       - remove experiments/, logs/, __pycache__"
 
@@ -51,11 +51,11 @@ experiment:
 evaluate:
 	$(PYTHON) scripts/evaluate.py --episodes 50 --deterministic
 
+watch:
+	$(PYTHON) scripts/watch_agent.py --loop
+
 plot:
 	$(PYTHON) scripts/plot_curves.py
-
-video:
-	$(PYTHON) scripts/record_video.py --episodes 3 --deterministic
 
 report:
 	jupyter nbconvert --to pdf --execute notebooks/03_final_report.ipynb \
