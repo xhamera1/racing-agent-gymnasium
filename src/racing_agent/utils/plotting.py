@@ -35,6 +35,16 @@ def _rolling_mean(values: np.ndarray, window: int) -> np.ndarray:
     return np.concatenate([pad, valid])
 
 
+def _effective_smoothing_window(n_points: int, requested: int) -> int:
+    """Cap smoothing so short CarRacing runs (often ~100 episodes) stay visible."""
+
+    requested = max(1, int(requested))
+    if n_points <= 1:
+        return 1
+    # At most 1/5 of episodes — e.g. 100 ep → window 20 → ~81 plotted points.
+    return min(requested, max(1, n_points // 5))
+
+
 def aggregate_episode_rewards(
     monitor_csvs: Sequence[Path],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -69,8 +79,9 @@ def plot_learning_curve(
     import matplotlib.pyplot as plt
 
     episodes, mean, std = aggregate_episode_rewards(monitor_csvs)
-    smooth_mean = _rolling_mean(mean, smoothing_window)
-    smooth_std = _rolling_mean(std, smoothing_window)
+    window = _effective_smoothing_window(int(mean.size), smoothing_window)
+    smooth_mean = _rolling_mean(mean, window)
+    smooth_std = _rolling_mean(std, window)
 
     valid = ~np.isnan(smooth_mean)
     x = episodes[valid]
@@ -114,8 +125,9 @@ def plot_hp_comparison(
             continue
         color = colors[idx % len(colors)]
         episodes, mean, std = aggregate_episode_rewards(list(csv_paths))
-        smooth_mean = _rolling_mean(mean, smoothing_window)
-        smooth_std = _rolling_mean(std, smoothing_window)
+        window = _effective_smoothing_window(int(mean.size), smoothing_window)
+        smooth_mean = _rolling_mean(mean, window)
+        smooth_std = _rolling_mean(std, window)
         valid = ~np.isnan(smooth_mean)
         x = episodes[valid]
         y = smooth_mean[valid]

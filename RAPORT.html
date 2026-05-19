@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projekt 5 — Raport SAC CarRacing-v3</title>
+<style>
+:root {
+  --text: #1a1a1a;
+  --muted: #555;
+  --border: #ddd;
+  --code-bg: #f5f5f5;
+  --link: #0b57d0;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  background: #fff;
+}
+h1 { font-size: 1.75rem; border-bottom: 2px solid var(--border); padding-bottom: .4rem; }
+h2 { font-size: 1.35rem; margin-top: 2rem; border-bottom: 1px solid var(--border); padding-bottom: .25rem; }
+h3 { font-size: 1.15rem; margin-top: 1.5rem; }
+h4 { font-size: 1.05rem; margin-top: 1.25rem; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+p { margin: .75rem 0; }
+ul, ol { margin: .5rem 0 .75rem 1.25rem; }
+li { margin: .25rem 0; }
+a { color: var(--link); }
+code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .9em;
+  background: var(--code-bg);
+  padding: .1em .35em;
+  border-radius: 3px;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+pre code { background: none; padding: 0; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: .95rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: .45rem .65rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: #f9f9f9; font-weight: 600; }
+tr:nth-child(even) td { background: #fcfcfc; }
+img { max-width: 100%; height: auto; display: block; margin: 1rem auto; border: 1px solid var(--border); border-radius: 4px; }
+em { color: var(--muted); }
+strong { font-weight: 600; }
+@media print {
+  body { max-width: none; padding: 1cm; }
+  a { color: inherit; text-decoration: none; }
+  pre { white-space: pre-wrap; word-break: break-word; }
+}
+</style>
+</head>
+<body>
+<h1>Projekt 5 — Uczenie przez wzmacnianie w przestrzeniach ciągłych</h1>
+<h2>Autonomiczny agent wyścigowy (SAC + CarRacing-v3)</h2>
+<hr />
+<h2>Autorzy</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Autor 1</th>
+<th>Autor 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Imię i nazwisko</strong></td>
+<td>Patryk Chamera</td>
+<td>Karol Bystrek</td>
+</tr>
+<tr>
+<td><strong>E-mail</strong></td>
+<td><a href="mailto:pchamera@student.agh.edu.pl">pchamera@student.agh.edu.pl</a></td>
+<td><a href="mailto:karbystrek@student.agh.edu.pl">karbystrek@student.agh.edu.pl</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Przedmiot:</strong> Inteligencja obliczeniowa<br />
+<strong>Temat:</strong> Reinforcement learning w ciągłej przestrzeni akcji i obserwacji<br />
+<strong>Repozytorium:</strong> <code>racing-agent-gymnasium</code><br />
+<strong>Biblioteka RL:</strong> <a href="https://stable-baselines3.readthedocs.io/">Stable-Baselines3</a><br />
+<strong>Środowisko:</strong> <a href="https://gymnasium.farama.org/">Gymnasium</a> <code>CarRacing-v3</code></p>
+<hr />
+<h2>1. Cel projektu</h2>
+<p>Celem projektu było zaimplementowanie i wytrenowanie agenta uczącego się przez wzmacnianie w <strong>ciągłej</strong> przestrzeni akcji, z obserwacją wizualną (obraz), oraz przygotowanie raportu obejmującego: opis środowiska i algorytmu, porównanie zestawów hiperparametrów, porównanie architektur sieci CNN, pomiar czasu uczenia oraz ewaluację deterministyczną najlepszego agenta.</p>
+<p>Projekt jest kontynuacją wcześniejszej pracy w <strong>przestrzeniach dyskretnych</strong> (<a href="https://github.com/xhamera1/crossy-road-gymnasium">crossy-road-gymnasium</a>, PPO). Tym razem zastosowaliśmy algorytm <strong>off-policy</strong> (SAC) oraz politykę <strong>CnnPolicy</strong> ze względu na obserwacje pikselowe.</p>
+<hr />
+<h2>2. Wybrane środowisko: <code>CarRacing-v3</code></h2>
+<h3>2.1 Opis</h3>
+<p><code>CarRacing-v3</code> (Gymnasium / Box2D) to klasyczne środowisko wyścigowe z widokiem z góry. Tor jest <strong>losowany w każdym epizodzie</strong>, co wymusza generalizację, a nie zapamiętanie jednej trasy.</p>
+<p><strong>Przestrzeń obserwacji:</strong> <code>Box(0, 255, (96, 96, 3), uint8)</code> — kolorowy obraz RGB 96×96 px.</p>
+<p><strong>Przestrzeń akcji (ciągła):</strong> <code>Box([-1, 0, 0], [1, 1, 1], (3,), float32)</code>:</p>
+<ul>
+<li>oś 0 — kierownica (−1 = maks. w lewo, +1 = maks. w prawo),</li>
+<li>oś 1 — gaz,</li>
+<li>oś 2 — hamulec.</li>
+</ul>
+<p><strong>Funkcja nagrody:</strong> w każdej klatce agent otrzymuje ok. <strong>−0,1</strong> (kara za czas) oraz dodatni składnik za <strong>nowo odwiedzone fragmenty toru</strong>; powtórne najechanie na te same kafelki daje silną karę. Nagroda jest więc gęsta, ale wymaga utrzymania się na torze i pokonywania łuków.</p>
+<p><strong>Koniec epizodu:</strong> ukończenie okrążenia lub limit <strong>1000 kroków</strong>.</p>
+<h3>2.2 Preprocessing obserwacji (implementacja)</h3>
+<p>W repozytorium (<code>src/racing_agent/env/wrappers.py</code>, <code>make_env.py</code>) stosujemy kolejno:</p>
+<ol>
+<li><strong>Skala szarości</strong> — <code>(96, 96, 3) → (96, 96)</code>.</li>
+<li><strong>Resize</strong> — domyślnie 84×84 (lokalnie) lub <strong>64×64</strong> (profil Kaggle).</li>
+<li><strong>Frame stack</strong> — domyślnie 4 klatki (lokalnie) lub <strong>2 klatki</strong> (profil Kaggle użyty w treningu).</li>
+<li>Opcjonalnie <strong>ClipReward</strong> (wyłączone w naszych runach).</li>
+</ol>
+<p>Wyjście do <code>CnnPolicy</code> ma postać <strong>C×H×W</strong> (uint8), zgodnie z konwencją SB3.</p>
+<h3>2.3 Czas kroku i epizodu</h3>
+<p>Na podstawie runów @ 100 000 kroków (GPU T4, Kaggle, <code>arch_light_cnn</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Metryka</th>
+<th>Wartość</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Średni czas kroku</td>
+<td><strong>~0,025 s</strong></td>
+</tr>
+<tr>
+<td>Średni czas epizodu</td>
+<td><strong>~1263 s</strong> (~21 min) — epizody treningowe liczone przez Monitor SB3</td>
+</tr>
+<tr>
+<td>Średni czas ściany (wall-clock) / 100k kroków</td>
+<td><strong>~2529 s</strong> (~42 min)</td>
+</tr>
+</tbody>
+</table>
+<p><em>Uwaga:</em> czas epizodu w Monitorze obejmuje pełne interakcje treningowe (w tym aktualizacje SAC), dlatego jest dłuższy niż sam rollout w podglądzie.</p>
+<hr />
+<h2>3. Wybrany algorytm: Soft Actor-Critic (SAC)</h2>
+<h3>3.1 Opis</h3>
+<p><strong>Soft Actor-Critic (SAC)</strong> to algorytm <strong>off-policy</strong> dla ciągłych akcji, łączący:</p>
+<ul>
+<li><strong>aktor-krytyk</strong> z funkcją Q (w SAC: <strong>dwie</strong> sieci Q — double Q, redukcja przeszacowania),</li>
+<li><strong>maksymalizację entropii</strong> — polityka maksymalizuje nagrodę i jednocześnie utrzymuje eksplorację (temperatura <strong>α</strong>),</li>
+<li><strong>bufor doświadczeń (replay buffer)</strong> — ponowne wykorzystanie próbek, istotne przy drogich obserwacjach wizualnych.</li>
+</ul>
+<p>W <strong>Stable-Baselines3</strong> używamy klasy <code>SAC</code> z polityką <code>**CnnPolicy</code>**: osobny ekstraktor cech CNN (NatureCNN / CustomDeepCNN / LightCNN) oraz głowy aktora i krytyków MLP.</p>
+<p>Kluczowe cechy konfiguracji SB3 w naszym projekcie:</p>
+<ul>
+<li><code>ent_coef="auto"</code> — automatyczna regulacja temperatury,</li>
+<li><code>train_freq</code>, <code>gradient_steps</code>, <code>batch_size</code>, <code>tau</code> — sterowanie tempem uczenia i stabilnością,</li>
+<li>zapis <code>**best_model.zip</code>** przez callback ewaluacyjny (<code>EvalSaveBestCallback</code>).</li>
+</ul>
+<h4>Jak to działa — analogia kierowcy</h4>
+<p>Cały agent można potraktować jak <strong>kierowcę autonomicznego</strong>, złożonego z kilku sieci neuronowych:</p>
+<table>
+<thead>
+<tr>
+<th>Rola w analogii</th>
+<th>Element w SAC</th>
+<th>Co robi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Oczy</strong></td>
+<td><strong>CNN</strong> (np. LightCNN)</td>
+<td>Patrzy na obraz z gry (klatki toru + samochód), wyciąga z pikseli wektor cech — np. 128 liczb opisujących sytuację na torze</td>
+</tr>
+<tr>
+<td><strong>Decyzja</strong></td>
+<td><strong>Aktor</strong> (MLP)</td>
+<td>Na podstawie cech wybiera akcję: kierownica, gaz, hamulec (3 liczby ciągłe)</td>
+</tr>
+<tr>
+<td><strong>Ocena</strong></td>
+<td><strong>Krytyk</strong> (2× MLP, Q1 i Q2)</td>
+<td>Ocenia parę <em>(stan, akcja)</em>: „czy ta decyzja w tej sytuacji da dobrą nagrodę w dłuższej perspektywie?”</td>
+</tr>
+<tr>
+<td><strong>Trener</strong></td>
+<td><strong>Algorytm SAC</strong></td>
+<td>Porównuje decyzje z nagrodami ze środowiska i poprawia wagi CNN, aktora i krytyków</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Przepływ danych</strong> podczas treningu:</p>
+<ol>
+<li>Środowisko <code>CarRacing-v3</code> zwraca <strong>obraz</strong> (po preprocessingu: skala szarości, resize, frame stack).</li>
+<li><strong>CNN</strong> zamienia obraz na <strong>wektor cech</strong>.</li>
+<li><strong>Aktor</strong> na tym wektorze wybiera akcję i wysyła ją do symulatora.</li>
+<li>Gra zwraca <strong>nagrodę</strong> (np. kara −0,1 za czas, bonus za nowe fragmenty toru) oraz <strong>następny obraz</strong>.</li>
+<li>Para <em>(obraz, akcja, nagroda, następny obraz)</em> trafia do <strong>bufora doświadczeń</strong>.</li>
+<li>SAC losuje batch z bufora i aktualizuje wagi wszystkich sieci (backprop).</li>
+</ol>
+<p><strong>Ważne:</strong> nagrody i kary <strong>nie są „w środku” sieci</strong> — nadaje je symulator gry. Sieci używają ich wyłącznie jako sygnału do uczenia. Przy podglądzie (<code>watch_agent.py</code>) działa tylko ścieżka <strong>obraz → CNN → aktor → akcja</strong>; krytyk nie steruje samochodem.</p>
+<p>Skład „Soft” w nazwie oznacza <strong>maksymalizację entropii</strong>: oprócz wysokiej nagrody SAC nagradza też pewną losowość akcji, żeby agent nie utknął w jednej, złej strategii. Parametr <strong>α</strong> (<code>ent_coef="auto"</code> w SB3) balansuje między zbiorem nagrody a eksploracją.</p>
+<h3>3.2 Dlaczego SAC, a nie PPO?</h3>
+<p>W Projekt 4 (Crossy Road) używaliśmy <strong>PPO</strong> (on-policy) na wektorowej obserwacji. Tutaj obserwacja to <strong>obraz</strong>, a rollout jest kosztowny — SAC z buforem doświadczeń lepiej wykorzystuje zebrane dane. Ciągła akcja (sterowanie + gaz + hamulec) jest naturalnym zastosowaniem SAC w SB3.</p>
+<hr />
+<h2>4. Implementacja w repozytorium</h2>
+<table>
+<thead>
+<tr>
+<th>Moduł</th>
+<th>Ścieżka</th>
+<th>Rola</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fabryka środowiska</td>
+<td><code>src/racing_agent/env/make_env.py</code></td>
+<td><code>make_car_racing()</code>, <code>make_car_racing_single()</code></td>
+</tr>
+<tr>
+<td>Wrappery wizualne</td>
+<td><code>src/racing_agent/env/wrappers.py</code></td>
+<td>grayscale, resize, frame stack</td>
+</tr>
+<tr>
+<td>Polityki CNN</td>
+<td><code>src/racing_agent/policies/</code></td>
+<td><code>NatureCNN</code>, <code>CustomDeepCNN</code>, <code>LightCNN</code></td>
+</tr>
+<tr>
+<td>Trening</td>
+<td><code>src/racing_agent/training/train.py</code></td>
+<td>klasa <code>Trainer</code>, SAC, callbacks</td>
+</tr>
+<tr>
+<td>Hiperparametry</td>
+<td><code>configs/hp_*.yaml</code>, <code>configs/arch_*.yaml</code></td>
+<td>YAML → merge → SAC</td>
+</tr>
+<tr>
+<td>Eksperymenty</td>
+<td><code>scripts/run_experiment.py</code></td>
+<td>siatka HP × seedy</td>
+</tr>
+<tr>
+<td>Krzywe uczenia</td>
+<td><code>scripts/plot_curves.py</code></td>
+<td>średnia ± std, <code>timing_table.csv</code></td>
+</tr>
+<tr>
+<td>Podgląd na żywo</td>
+<td><code>scripts/watch_agent.py</code></td>
+<td>pygame, <code>render_mode="human"</code></td>
+</tr>
+<tr>
+<td>Ewaluacja</td>
+<td><code>scripts/evaluate.py</code></td>
+<td>50 epizodów, <code>deterministic=True</code></td>
+</tr>
+</tbody>
+</table>
+<p>Każdy run zapisuje metadane w <code>experiments/&lt;run_id&gt;/run_metadata.json</code>, logi Monitor w <code>logs/monitor/</code>, modele w <code>models/best/</code> i <code>models/final/</code>.</p>
+<p>Trening produkcyjny wykonywaliśmy na <strong>Kaggle (GPU T4)</strong> z notebookiem <code>notebooks/02_kaggle_hp_sweep.ipynb</code>; wyniki importowaliśmy lokalnie.</p>
+<hr />
+<h2>5. Zestawy hiperparametrów</h2>
+<p>Zgodnie z poleceniem zdefiniowaliśmy <strong>trzy</strong> zestawy HP (pliki <code>configs/</code>). W treningu Kaggle faktycznie wykorzystaliśmy <code>**hp_baseline</code>**; pozostałe dwa zestawy są gotowe w repozytorium do uruchomienia siatki (<code>run_experiment.py</code>).</p>
+<h3>5.1 Tabela hiperparametrów SAC</h3>
+<table>
+<thead>
+<tr>
+<th>Parametr</th>
+<th><code>hp_baseline</code></th>
+<th><code>hp_high_lr</code></th>
+<th><code>hp_large_batch</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>learning_rate</code></td>
+<td>3×10⁻⁴</td>
+<td><strong>1×10⁻³</strong></td>
+<td>3×10⁻⁴</td>
+</tr>
+<tr>
+<td><code>buffer_size</code></td>
+<td>100 000</td>
+<td>100 000</td>
+<td><strong>300 000</strong></td>
+</tr>
+<tr>
+<td><code>batch_size</code></td>
+<td>256</td>
+<td>256</td>
+<td><strong>512</strong></td>
+</tr>
+<tr>
+<td><code>tau</code></td>
+<td>0,005</td>
+<td><strong>0,02</strong></td>
+<td>0,005</td>
+</tr>
+<tr>
+<td><code>train_freq</code></td>
+<td>1</td>
+<td>1</td>
+<td><strong>4</strong></td>
+</tr>
+<tr>
+<td><code>gradient_steps</code></td>
+<td>1</td>
+<td>1</td>
+<td><strong>4</strong></td>
+</tr>
+<tr>
+<td><code>learning_starts</code></td>
+<td>1000</td>
+<td>1000</td>
+<td>2000</td>
+</tr>
+<tr>
+<td><code>gamma</code></td>
+<td>0,99</td>
+<td>0,99</td>
+<td>0,99</td>
+</tr>
+<tr>
+<td><code>ent_coef</code></td>
+<td>auto</td>
+<td>auto</td>
+<td>auto</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hipotezy:</strong></p>
+<ul>
+<li><em>baseline</em> — punkt odniesienia (domyślne ustawienia SB3),</li>
+<li><em>high_lr</em> — szybsze uczenie, ryzyko niestabilności,</li>
+<li><em>large_batch</em> — gładsze gradienty, wyższy koszt czasu ściany.</li>
+</ul>
+<h3>5.2 Profil Kaggle (<code>kaggle_overrides.yaml</code>)</h3>
+<p>Ze względu na limit czasu GPU zastosowaliśmy dodatkowy plik overrides:</p>
+<table>
+<thead>
+<tr>
+<th>Parametr</th>
+<th>Wartość w treningu</th>
+<th>Cel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>resize_to</code></td>
+<td>64</td>
+<td>mniej pikseli → szybszy krok</td>
+</tr>
+<tr>
+<td><code>frame_stack</code></td>
+<td><strong>2</strong></td>
+<td>mniejsze wejście CNN</td>
+</tr>
+<tr>
+<td><code>buffer_size</code></td>
+<td>50 000</td>
+<td>szybszy start uczenia</td>
+</tr>
+<tr>
+<td><code>learning_starts</code></td>
+<td>500</td>
+<td>wcześniejsze update’y</td>
+</tr>
+<tr>
+<td><code>eval_every_timesteps</code></td>
+<td>50 000</td>
+<td>zapis <code>best_model</code> na końcu runu</td>
+</tr>
+</tbody>
+</table>
+<p>Architektura treningowa: <code>**arch_light_cnn</code>** (mniejsza sieć niż NatureCNN).</p>
+<hr />
+<h2>6. Architektury sieci neuronowych</h2>
+<p>Polecenie wymaga co najmniej <strong>dwóch</strong> architektur CNN. W repozytorium zaimplementowaliśmy trzy ekstraktory cech; w <strong>zakończonych eksperymentach</strong> używaliśmy <strong>LightCNN</strong>. <strong>NatureCNN</strong> i <strong>CustomDeepCNN</strong> są w pełni zaimplementowane i przewidziane do porównania (Phase 5); lokalnie wykonano krótki smoke test NatureCNN (5000 kroków).</p>
+<h3>6.1 Architektura A — NatureCNN (SB3 domyślna)</h3>
+<ul>
+<li><strong>Wejście:</strong> <code>(4, 84, 84)</code> float32 (po normalizacji /255),</li>
+<li><strong>Conv</strong> 32×8, stride 4 → ReLU → Conv 64×4, s=2 → ReLU → Conv 64×3, s=1 → ReLU,</li>
+<li><strong>Flatten</strong> → <strong>Linear → 512</strong> (features_dim),</li>
+<li><strong>Głowy SAC:</strong> MLP <code>[256, 256]</code> (aktor i krytyki).</li>
+</ul>
+<p>Plik: <code>configs/arch_nature_cnn.yaml</code>, <code>src/racing_agent/policies/nature_cnn.py</code>.</p>
+<p>Schemat architektury NatureCNN</p>
+<p><img alt="Schemat architektury NatureCNN" src="reports/figures/arch_nature_cnn.png" /></p>
+<h3>6.2 Architektura B — CustomDeepCNN</h3>
+<ul>
+<li><strong>Wejście:</strong> <code>(4, 84, 84)</code>,</li>
+<li><strong>Conv</strong> 32×3, s=2 → BatchNorm → ReLU → (powtarzane warstwy 64, 128, 128),</li>
+<li><strong>AdaptiveAvgPool2d(1)</strong> → <strong>Linear → 256</strong>,</li>
+<li><strong>Głowy SAC:</strong> MLP <code>[256, 256]</code> (identyczne jak w A — uczciwe porównanie).</li>
+</ul>
+<p>Plik: <code>configs/arch_deep_cnn.yaml</code>, <code>src/racing_agent/policies/custom_cnn.py</code>.</p>
+<p>Schemat architektury CustomDeepCNN</p>
+<p><img alt="Schemat architektury CustomDeepCNN" src="reports/figures/arch_deep_cnn.png" /></p>
+<h3>6.3 Architektura C — LightCNN (użyta w treningu Kaggle)</h3>
+<ul>
+<li><strong>Wejście:</strong> <code>(2, 64, 64)</code> przy overrides Kaggle,</li>
+<li><strong>Conv</strong> 16×8, s=4 → ReLU → Conv 32×4, s=2 → ReLU,</li>
+<li><strong>Flatten</strong> → <strong>Linear → 128</strong>,</li>
+<li><strong>Głowy SAC:</strong> MLP <code>[128]</code>.</li>
+</ul>
+<p>Plik: <code>configs/arch_light_cnn.yaml</code> — ok. <strong>5–10× mniej</strong> parametrów conv niż NatureCNN, ~42 min / 100k kroków na T4.</p>
+<p>Schemat architektury LightCNN (użyta w treningu)</p>
+<p><img alt="Schemat architektury LightCNN" src="reports/figures/arch_light_cnn.png" /></p>
+<p><strong>Uzasadnienie wyboru LightCNN w treningu:</strong> pełna siatka 3×10×50k na NatureCNN przekraczałaby budżet Kaggle (~30 h GPU/tydzień); LightCNN umożliwił iterację i dopracowanie pipeline’u importu, podglądu i ewaluacji.</p>
+<hr />
+<h2>7. Przebieg eksperymentów i etapy uczenia</h2>
+<p>Poniżej chronologia <strong>zakończonych</strong> runów (<code>hp_baseline</code>, <code>arch_light_cnn</code>, overrides Kaggle, stack=2, 64×64).</p>
+<table>
+<thead>
+<tr>
+<th>Etap</th>
+<th>Run (skrót)</th>
+<th>Seed</th>
+<th>Kroki</th>
+<th>Szczyt nagrody (Monitor)</th>
+<th>Obserwacja</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — smoke Kaggle</td>
+<td><code>…193403</code></td>
+<td>0</td>
+<td>20 000</td>
+<td>−20</td>
+<td>Agent prawie losowy; wirowanie / brak jazdy</td>
+</tr>
+<tr>
+<td>1 — smoke Kaggle</td>
+<td><code>…194312</code>, <code>…195214</code></td>
+<td>1, 2</td>
+<td>20 000</td>
+<td>−17, 0,4</td>
+<td>Brak sensownej jazdy</td>
+</tr>
+<tr>
+<td>2 — dłuższy run</td>
+<td><code>…205005</code></td>
+<td>0</td>
+<td>100 000</td>
+<td>288</td>
+<td>Pierwsze dodatnie epizody; niestabilność</td>
+</tr>
+<tr>
+<td>3 — long run</td>
+<td><code>…214604</code></td>
+<td>0</td>
+<td><strong>300 000</strong></td>
+<td><strong>863</strong></td>
+<td>Najwyższy szczyt treningu; końcówka treningu gorsza (średnia ostatnich ep. ujemna)</td>
+</tr>
+<tr>
+<td>4 — sweep (sesja 1)</td>
+<td><code>…061846</code></td>
+<td>0</td>
+<td>100 000</td>
+<td>288</td>
+<td>Powtórka seed0 @ 100k (nowszy timestamp)</td>
+</tr>
+<tr>
+<td>4 — sweep (sesja 1)</td>
+<td><code>…070055</code></td>
+<td>1</td>
+<td>100 000</td>
+<td>58</td>
+<td>Słaby run — brak stabilnej jazdy</td>
+</tr>
+<tr>
+<td>4 — sweep (sesja 1)</td>
+<td><code>…074316</code></td>
+<td>2</td>
+<td>100 000</td>
+<td><strong>774</strong></td>
+<td><strong>Najlepszy run pod kątem jazdy w podglądzie</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>7.1 Co poprawialiśmy w trakcie projektu</h3>
+<ol>
+<li><strong>Zwiększenie liczby kroków</strong> (20k → 100k → 300k) — kluczowa poprawa; przy 20k agent nie miał szansy nauczyć się toru.</li>
+<li><strong>Wybór checkpointu</strong> — porównanie <code>best_model</code> vs <code>final_model</code>; auto-wybór po szczytowej nagrodzie Monitor vs jakość jazdy w podglądzie.</li>
+<li><strong>Ewaluacja deterministyczna</strong> — 50 epizodów headless (<code>evaluate.py</code>).</li>
+</ol>
+<hr />
+<h2>8. Wyniki ilościowe</h2>
+<h3>8.1 Krzywa uczenia</h3>
+<p>Poniżej krzywa uczenia dla <code>**hp_baseline</code><strong>, architektura <code>arch_light_cnn</code>, </strong>3 seedy @ 100 000 kroków** (średnia ± odch. std.):</p>
+<p>Krzywa uczenia hp_baseline — mean ± std (3 seedy)</p>
+<p><img alt="Krzywa uczenia hp_baseline — mean ± std (3 seedy)" src="reports/figures/learning_curve_hp_baseline.png" /></p>
+<p>Duży rozstrzał między seedami (seed1 słaby, seed2 silny) potwierdza wysoką wariancję SAC na CarRacing przy ograniczonej liczbie kroków. Widać poprawę względem wczesnych runów @ 20k (nagrody ujemne) — efekt zwiększenia budżetu kroków opisany w sekcji 7.</p>
+<h3>8.2 Czas treningu</h3>
+<p>Plik: <code>reports/figures/timing_table.csv</code></p>
+<table>
+<thead>
+<tr>
+<th>HP</th>
+<th>Liczba runów</th>
+<th>Średni wall-clock [s]</th>
+<th>Średni czas kroku [s]</th>
+<th>Kroki</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hp_baseline</td>
+<td>3</td>
+<td>2529</td>
+<td>0,025</td>
+<td>100 000</td>
+</tr>
+</tbody>
+</table>
+<h3>8.3 Ewaluacja deterministyczna</h3>
+<p><strong>Ewaluacja</strong> to test już wytrenowanego agenta: wczytujemy zapisany checkpoint (<code>best_model.zip</code>), puszczamy <strong>50 epizodów</strong> w grze <strong>bez dalszego uczenia</strong> i zbieramy statystyki nagrody (średnia, mediana, min, max). Skrypt: <code>scripts/evaluate.py</code>.</p>
+<h4>Czym różni się tryb deterministyczny?</h4>
+<p>W SAC <strong>aktor</strong> dla każdego kroku zwraca nie jedną liczbę, lecz <strong>rozkład akcji</strong> — np. „najlepiej skręcić około −0,4, z pewnym rozrzutem”. Dotyczy to trzech wyjść: kierownicy, gazu i hamulca.</p>
+<table>
+<thead>
+<tr>
+<th>Tryb</th>
+<th>Parametr</th>
+<th>Zachowanie agenta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Deterministyczny</strong></td>
+<td><code>deterministic=True</code></td>
+<td>Zawsze wybiera <strong>środek</strong> rozkładu — tę samą, „najpewniejszą” akcję przy tym samym obrazie</td>
+</tr>
+<tr>
+<td><strong>Stochastyczny</strong></td>
+<td><code>deterministic=False</code></td>
+<td><strong>Losuje</strong> akcję z rozkładu — ten sam zakręt może dać nieco inną decyzję</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Przykład (kierownica):</strong> sieć sugeruje skręt w lewo około <strong>−0,4</strong>. W trybie deterministycznym agent <strong>zawsze</strong> wysyła −0,4; w stochastycznym może wysłać np. −0,38, −0,52 lub −0,31.</p>
+<p>Używamy <code>**deterministic=True</code><strong>, żeby zmierzyć </strong>stabilną jakość** polityki, a nie przypadkowy szum eksploracji z treningu.</p>
+<hr />
+<h4>Agent porównawczy — seed0 @ 300k</h4>
+<p><strong>Model:</strong> <code>hp_baseline__arch_light_cnn__seed00__20260518-214604</code> / <code>best_model.zip</code><br />
+<strong>Plik:</strong> <code>reports/figures/eval_summary.json</code><br />
+<strong>Ustawienia:</strong> 50 epizodów, <code>deterministic=True</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Statystyka</th>
+<th>Wartość</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Średnia nagroda</td>
+<td><strong>185,1</strong></td>
+</tr>
+<tr>
+<td>Mediana</td>
+<td><strong>191,6</strong></td>
+</tr>
+<tr>
+<td>Odch. std.</td>
+<td><strong>174,5</strong></td>
+</tr>
+<tr>
+<td>Min</td>
+<td>−40,4</td>
+</tr>
+<tr>
+<td>Max</td>
+<td><strong>795,8</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>Agent demo — seed02 @ 100k (lepszy w podglądzie)</h4>
+<p><strong>Model:</strong> <code>hp_baseline__arch_light_cnn__seed02__20260519-074316</code> / <code>best_model.zip</code><br />
+<strong>Plik:</strong> <code>reports/figures/eval_summary_seed02.json</code><br />
+<strong>Ustawienia:</strong> 50 epizodów, <code>deterministic=True</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Statystyka</th>
+<th>Wartość</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Średnia nagroda</td>
+<td><strong>203,8</strong></td>
+</tr>
+<tr>
+<td>Mediana</td>
+<td><strong>213,7</strong></td>
+</tr>
+<tr>
+<td>Odch. std.</td>
+<td><strong>170,9</strong></td>
+</tr>
+<tr>
+<td>Min</td>
+<td>−52,4</td>
+</tr>
+<tr>
+<td>Max</td>
+<td><strong>617,5</strong></td>
+</tr>
+</tbody>
+</table>
+<p>We wszystkich epizodach ewaluacji długość = <strong>1000 kroków</strong> (timeout). seed02 ma <strong>wyższą średnią i medianę</strong> niż seed0 @ 300k, co potwierdza wybór seed02 jako agenta demo mimo niższego peaku treningowego (774 vs 863).</p>
+<p><strong>Porównanie obu agentów (ewaluacja deterministyczna, 50 epizodów):</strong></p>
+<p>Porównanie ewaluacji deterministycznej seed0 vs seed02</p>
+<p><img alt="Porównanie ewaluacji deterministycznej seed0 vs seed02" src="reports/figures/eval_comparison.png" /></p>
+<p><strong>Rozkład nagród — agent demo seed02:</strong></p>
+<p>Histogram nagród ewaluacji — seed02 @ 100k</p>
+<p><img alt="Histogram nagród ewaluacji — seed02 @ 100k" src="reports/figures/eval_histogram_seed02.png" /></p>
+<p>Wysokie odchylenie standardowe (~171) wskazuje na dużą zmienność epizodów — część rund kończy się słabo (ujemna nagroda), część bardzo dobrze (ponad 600 pkt).</p>
+<h3>8.4 Porównanie dwóch agentów demo (podgląd)</h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Folder</th>
+<th>Peak treningu</th>
+<th>Zachowanie w <code>watch_agent</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Główny (lepszy)</strong></td>
+<td><code>…seed02__20260519-074316</code></td>
+<td>774</td>
+<td>Lepsza jazda na prostych; na ostrym łuku <strong>leci prosto poza mapę</strong></td>
+</tr>
+<tr>
+<td><strong>Drugie (długi run)</strong></td>
+<td><code>…seed00__20260518-214604</code></td>
+<td>863</td>
+<td>Na prostych OK; na łuku <strong>hamuje i stoi</strong> do końca epizodu (−0,1/krok)</td>
+</tr>
+</tbody>
+</table>
+<p>Przykładowe logi podglądu (<code>--fast</code>):</p>
+<ul>
+<li><strong>seed0 @ 300k:</strong> ep.2 — nagroda 347,8 @ krok 400, potem spadek ~20 co 200 kroków (postój).</li>
+<li><strong>seed02 @ 100k:</strong> ep.2 — nagroda <strong>389,5</strong> @ krok 400 (wyraźnie lepszy fragment jazdy).</li>
+</ul>
+<p><strong>Wnioski jakościowe:</strong> oba modele nie opanowały ostrych zakrętów — różne „awarie”: postój vs wypadnięcie z toru. seed02 wybraliśmy jako <strong>agent demo</strong> ze względu na lepsze odcinki jazdy w podglądzie mimo nieco niższego peaku treningowego niż seed0 @ 300k.</p>
+<hr />
+<h2>9. Screenshoty z wyścigu</h2>
+<p>Poniższe kadry pochodzą z podglądu na żywo (<code>scripts/watch_agent.py</code>, agent demo <strong>seed02 @ 100k</strong>, <code>deterministic=True</code>). Pokazują typowe zachowanie modelu: poprawną jazdę na prostych odcinkach oraz awarię na ostrym łuku.</p>
+<h3>9.1 Poprawna jazda — prosty odcinek</h3>
+<p><img alt="Agent na prostej — pojazd trzyma się toru" src="racing-screenshots/gameplay1.png" /></p>
+<p><em>Rys. 9.1 — Pojazd jedzie środkiem toru; widoczne ślady opon. Agent utrzymuje kierunek i zbiera nagrodę za postęp po torze.</em></p>
+<h3>9.2 Wejście w zakręt</h3>
+<p><img alt="Agent na zakręcie — zbliża się do krawędzi toru" src="racing-screenshots/gameplay2.png" /></p>
+<p><em>Rys. 9.2 — Pojazd skręca na łuku</em></p>
+<h3>9.3 Awaria — wyjazd poza tor</h3>
+<p><img alt="Pojazd na trawie poza torem — brak możliwości powrotu" src="racing-screenshots/fail-pojazd-wyjechal-za-tor.png" /></p>
+<p><em>Rys. 9.3 — Pojazd całkowicie opuścił asfalt. Epizod de facto stracony: brak nagrody za trawę, agent nie wraca na tor.</em></p>
+<h3>9.4 Dlaczego model nie jest „najlepszy”?</h3>
+<p>Obecny checkpoint <strong>nie reprezentuje pełnego potencjału SAC na CarRacing</strong> — wynika to głównie z <strong>ograniczonego budżetu treningu</strong> (100 000 kroków na Kaggle T4, profil LightCNN 64×64, stack=2) oraz braku czasu na pełną siatkę HP i porównanie architektur. Literatura i typowe benchmarki wymagają <strong>milionów kroków</strong> i większej sieci.</p>
+<p><strong>Dlaczego przy ostrych zakrętach wypada z toru i nie wraca?</strong></p>
+<ol>
+<li><strong>Niedotrenowanie na trudnych manewrach</strong> — przy 100k kroków agent najczęściej widział proste odcinki i łagodne łuki; na ostrym zakręcie trzeba jednocześnie hamować, skręcać i trzymać linię — tej synergii sieć jeszcze nie opanowała.</li>
+<li><strong>Zbyt duża prędkość w wejściu w łuk</strong> — polityka często utrzymuje gaz; na prostej to działa, na ostrym łuku bezwładność wypycha auto na zewnętrzną krawędź.</li>
+<li><strong>Brak nagrody poza torem</strong> — po wyjeździe na trawę nagroda spada; obraz (zielone tło bez wyraźnej krawędzi toru) <strong>nie przypomina stanów z treningu</strong>, więc aktor nie ma „mapy powrotu”.</li>
+<li><strong>Polityka deterministyczna</strong> — w podglądzie agent nie eksploruje; powtarza te same (błędne) akcje zamiast szukać toru.</li>
+</ol>
+<p>To zgodne z obserwacjami z sekcji 8.4: seed02 jeździ lepiej niż seed0 na prostych, ale <strong>oba modele nie opanowały ostrych łuków</strong> — różnią się tylko typem awarii (wypadnięcie vs postój).</p>
+<hr />
+<h2>10. Zadanie 8-punktowe — podsumowanie</h2>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Realizacja</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zapis najlepszego agenta</td>
+<td><code>experiments/…/models/best/best_model.zip</code></td>
+</tr>
+<tr>
+<td>Symulacja deterministyczna</td>
+<td><code>scripts/evaluate.py --deterministic</code></td>
+</tr>
+<tr>
+<td>Porównanie z krzywą uczenia</td>
+<td>peak treningu (863) vs średnia eval (185) — patrz sekcja 8.1 i wykres powyżej</td>
+</tr>
+<tr>
+<td>Podgląd wizualny</td>
+<td><code>scripts/watch_agent.py</code> (pygame)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>11. Wnioski końcowe</h2>
+<ol>
+<li><strong>SAC + CnnPolicy</strong> na <code>CarRacing-v3</code> jest wykonalny, ale wymaga <strong>dużej liczby kroków</strong> (≥100k) i stabilnego środowiska treningowego.</li>
+<li><strong>Profil Kaggle (LightCNN, 64×64, stack=2)</strong> umożliwił iterację w rozsądnym czasie (~42 min / 100k na T4).</li>
+<li><strong>Najlepszy agent demo:</strong> <code>hp_baseline</code>, seed <strong>2</strong>, 100k kroków — sensowna jazda na prostych, problemy na ostrych łukach.</li>
+<li><strong>Agent porównawczy:</strong> seed <strong>0</strong>, 300k — najwyższy peak treningu (863), gorsze zachowanie deterministyczne na łukach (postój).</li>
+<li><strong>Hiperparametry i architektury B/C</strong> — zdefiniowane i zaimplementowane; pełna siatka eksperymentów nie została ukończona z powodu limitów obliczeniowych (ujawnione w raporcie zgodnie z wymogiem uzasadnienia).</li>
+</ol>
+<hr />
+<h2>12. Uruchamianie</h2>
+<pre><code class="language-bash"># środowisko
+py -3.12 -m venv .venv &amp;&amp; .venv\Scripts\Activate.ps1
+pip install -e &quot;.[dev]&quot;
+
+# podgląd — najlepszy agent
+python scripts/watch_agent.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed02__20260519-074316 \
+  --fast --episodes 5
+
+# podgląd — agent porównawczy (300k)
+python scripts/watch_agent.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 \
+  --fast --episodes 5
+
+# ewaluacja deterministyczna
+python scripts/evaluate.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 \
+  --episodes 50 --deterministic
+
+# wykresy
+python scripts/plot_curves.py --arch arch_light_cnn --min-timesteps 100000
+python scripts/generate_report_figures.py
+</code></pre>
+</body>
+</html>

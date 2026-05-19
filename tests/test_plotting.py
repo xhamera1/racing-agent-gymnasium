@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 
@@ -99,6 +100,14 @@ def test_group_runs_by_hp_keeps_newest_seed_run(tmp_path: Path) -> None:
     assert grouped["hp_baseline"][0]["run_id"].endswith("20260102-100000")
 
 
+def test_effective_smoothing_window_caps_short_runs() -> None:
+    from racing_agent.utils.plotting import _effective_smoothing_window
+
+    assert _effective_smoothing_window(100, 100) == 20
+    assert _effective_smoothing_window(500, 100) == 100
+    assert _effective_smoothing_window(10, 100) == 2
+
+
 def test_plot_learning_curve_writes_png(tmp_path: Path) -> None:
     from racing_agent.utils.plotting import plot_learning_curve
 
@@ -109,8 +118,30 @@ def test_plot_learning_curve_writes_png(tmp_path: Path) -> None:
         csvs.append(path)
 
     out = tmp_path / "curve.png"
-    plot_learning_curve(csvs, out, title="test", smoothing_window=3)
+    plot_learning_curve(csvs, out, title="test", smoothing_window=100)
     assert out.is_file() and out.stat().st_size > 0
+
+
+def test_plot_learning_curve_100_episodes_not_single_point(tmp_path: Path) -> None:
+    from racing_agent.utils.plotting import aggregate_episode_rewards, plot_learning_curve
+
+    csvs = []
+    for seed in range(3):
+        path = tmp_path / f"seed{seed}.monitor.csv"
+        _write_monitor_csv(path, [-50.0 + i + seed * 10 for i in range(100)])
+        csvs.append(path)
+
+    episodes, mean, _ = aggregate_episode_rewards(csvs)
+    out = tmp_path / "curve100.png"
+    plot_learning_curve(csvs, out, title="100 ep", smoothing_window=100)
+
+    from racing_agent.utils.plotting import _effective_smoothing_window, _rolling_mean
+
+    window = _effective_smoothing_window(len(mean), 100)
+    smooth = _rolling_mean(mean, window)
+    valid_count = int(np.sum(~np.isnan(smooth)))
+    assert valid_count > 10
+    assert out.is_file()
 
 
 def test_plot_curves_cli_on_synthetic_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
