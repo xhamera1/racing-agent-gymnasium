@@ -97,6 +97,19 @@ def test_monitor_tail_mean_reward(tmp_path: Path) -> None:
     assert monitor_tail_mean_reward(run_dir, tail=2) == pytest.approx(-35.0)
 
 
+def test_monitor_peak_reward(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    mon = run_dir / "logs" / "monitor"
+    mon.mkdir(parents=True)
+    (mon / "monitor_0.monitor.csv").write_text(
+        "# comment\nr,l,t\n-50,100,1.0\n863.0,900,2.0\n-30,100,3.0\n",
+        encoding="utf-8",
+    )
+    from racing_agent.evaluation.evaluator import monitor_peak_reward
+
+    assert monitor_peak_reward(run_dir) == pytest.approx(863.0)
+
+
 def test_write_eval_summary(tmp_path: Path) -> None:
     report = EvalReport(
         model_path=Path("m.zip"),

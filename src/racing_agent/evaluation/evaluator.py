@@ -121,16 +121,32 @@ def monitor_tail_mean_reward(run_dir: Path, *, tail: int = 5) -> Optional[float]
     return float(df["r"].tail(int(tail)).mean())
 
 
+def monitor_peak_reward(run_dir: Path) -> Optional[float]:
+    """Best single-episode return logged in the Monitor CSV."""
+
+    csv_path = find_monitor_csv(run_dir)
+    if csv_path is None:
+        return None
+    try:
+        df = pd.read_csv(csv_path, comment="#")
+    except (OSError, pd.errors.ParserError, ValueError):
+        return None
+    if df.empty or "r" not in df.columns:
+        return None
+    return float(df["r"].max())
+
+
 def pick_best_checkpoint(
     experiments_dir: Path,
     *,
     arch_name: Optional[str] = None,
 ) -> Path:
-    """Choose the checkpoint whose run has the highest recent Monitor return."""
+    """Choose the checkpoint from the run with the highest Monitor peak return."""
 
     experiments_dir = Path(experiments_dir)
     best_path: Optional[Path] = None
     best_score = float("-inf")
+    best_timesteps = -1
 
     for meta in discover_runs(experiments_dir):
         cfg = meta.get("config") or {}
@@ -142,11 +158,13 @@ def pick_best_checkpoint(
         if ckpt is None:
             continue
 
-        score = monitor_tail_mean_reward(run_dir)
+        score = monitor_peak_reward(run_dir)
+        timesteps = int(meta.get("total_timesteps", 0))
         if score is None:
-            score = float(meta.get("total_timesteps", 0))
-        if score > best_score:
+            score = float(timesteps)
+        if score > best_score or (score == best_score and timesteps > best_timesteps):
             best_score = score
+            best_timesteps = timesteps
             best_path = ckpt
 
     if best_path is None:
@@ -224,11 +242,17 @@ def _rollout_episode(
     deterministic: bool,
     seed: int,
     realtime: bool,
+    show_progress: bool = False,
+    episode_label: str = "",
 ) -> tuple[float, int]:
     obs, _ = env.reset(seed=seed)
     total_reward = 0.0
     steps = 0
     step_dt = 1.0 / max(_render_fps(env), 1.0)
+
+    if show_progress:
+        label = f"{episode_label} " if episode_label else ""
+        print(f"{label}started (pygame window — check taskbar). Ctrl+C to stop.", flush=True)
 
     terminated = truncated = False
     while not (terminated or truncated):
@@ -238,6 +262,9 @@ def _rollout_episode(
         obs, reward, terminated, truncated, _ = env.step(action)
         total_reward += float(reward)
         steps += 1
+        if show_progress and steps % 200 == 0:
+            label = f"{episode_label} " if episode_label else ""
+            print(f"{label}step {steps}, reward so far {total_reward:.1f}", flush=True)
 
     return total_reward, steps
 
@@ -298,19 +325,30 @@ def watch_agent(
     model = _load_sac(model_path, env)
     episode_iter = _episode_counter(n_episodes, loop=loop)
 
-    print(f"Watching {model_path.name}  deterministic={deterministic}  env={kw}")
-    print("Close the pygame window or press Ctrl+C to stop.")
+    print(f"Watching {model_path.name}  deterministic={deterministic}  env={kw}", flush=True)
+    run_dir = infer_run_dir(model_path)
+    if run_dir is not None:
+        print(f"run_dir: {run_dir.name}", flush=True)
+    print(
+        "Reward prints after each episode ends (~20–40 s). "
+        "Use --fast for quicker test runs.",
+        flush=True,
+    )
+    print("Close the pygame window or press Ctrl+C to stop.", flush=True)
 
     try:
         for ep_idx in episode_iter:
+            ep_label = f"episode {ep_idx + 1}:"
             reward, length = _rollout_episode(
                 model,
                 env,
                 deterministic=deterministic,
                 seed=int(seed + ep_idx),
                 realtime=realtime,
+                show_progress=True,
+                episode_label=ep_label,
             )
-            print(f"episode {ep_idx + 1}: reward={reward:.1f}  steps={length}")
+            print(f"episode {ep_idx + 1}: reward={reward:.1f}  steps={length}", flush=True)
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:

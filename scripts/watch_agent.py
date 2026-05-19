@@ -69,7 +69,12 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = Path(__file__).resolve().parent.parent
     _ensure_import_path(repo_root)
 
-    from racing_agent.evaluation.evaluator import resolve_checkpoint, watch_agent
+    from racing_agent.evaluation.evaluator import (
+        infer_run_dir,
+        monitor_peak_reward,
+        resolve_checkpoint,
+        watch_agent,
+    )
 
     try:
         model_path = resolve_checkpoint(
@@ -84,6 +89,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(f"checkpoint: {model_path}")
+    peak = monitor_peak_reward(infer_run_dir(model_path) or model_path.parent)
+    if peak is not None:
+        print(f"training peak reward (Monitor): {peak:.1f}")
     watch_agent(
         model_path,
         n_episodes=None if args.loop else int(args.episodes),
