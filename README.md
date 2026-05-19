@@ -1,134 +1,109 @@
 # racing-agent-gymnasium
 
-> An autonomous racing agent trained with **Soft Actor-Critic (SAC)** on the
-> continuous-control **`CarRacing-v3`** environment (Gymnasium / Box2D).
->
-> Academic project for *Inteligencja Obliczeniowa — Projekt 5: Uczenie przez
-> wzmacnianie w przestrzeniach ciągłych*. Targeting the full **8 / 8 pts**.
-> Deadline: **2026-06-04**.
+SAC agent on **CarRacing-v3** (Gymnasium / Box2D). 
 
-| Topic       | Details                                                                                   |
-| ----------- | ----------------------------------------------------------------------------------------- |
-| Environment | `CarRacing-v3` — `Box(0, 255, (96, 96, 3), uint8)` obs, `Box([-1, 0, 0], 1.0, (3,))` act  |
-| Algorithm   | SAC (`stable-baselines3`) — off-policy, max-entropy, double-Q, auto-tuned temperature      |
-| Policy      | `CnnPolicy` — NatureCNN (baseline) **and** a custom deeper CNN (comparison)               |
-| Inspiration | [crossy-road-gymnasium](https://github.com/xhamera1/crossy-road-gymnasium) — Projekt 4, discrete spaces |
+
+|          |                                                             |
+| -------- | ----------------------------------------------------------- |
+| **Env**  | `CarRacing-v3` — visual obs, continuous steer / gas / brake |
+| **Algo** | SAC + `CnnPolicy` (`stable-baselines3`)                     |
+| **Plan** | `[PLAN.md](PLAN.md)`                                        |
+
 
 ---
 
-## Status
+## What we have
 
-The repository is bootstrapped — directory tree, package skeleton, configs,
-script stubs, tests and the implementation plan are in place. The phased
-implementation itself is tracked in [`PLAN.md`](PLAN.md).
 
-| Phase | Description                                  | State            |
-| ----- | -------------------------------------------- | ---------------- |
-| 0     | Bootstrap (pyproject, venv, smoke tests)     | ✅ skeleton ready |
-| 1     | Env factory + wrappers (84×84, frame-stack)  | ⏳ pending        |
-| 2     | Two CNN feature extractors                   | ⏳ pending        |
-| 3     | Training pipeline + callbacks                | ⏳ pending        |
-| 4     | 3 HP × 10 seeds × ≥50 000 steps (4-pt task)  | ⏳ pending        |
-| 5     | Architecture A vs B (6-pt task)              | ⏳ pending        |
-| 6     | Best model — deterministic eval (8-pt task)  | ⏳ pending        |
-| 7     | Final report → `reports/final_report.pdf`    | ⏳ pending        |
+| Done              | Notes                                                        |
+| ----------------- | ------------------------------------------------------------ |
+| Env + wrappers    | grayscale, resize, frame-stack → `src/racing_agent/env/`     |
+| CNN policies      | NatureCNN, CustomDeepCNN, **LightCNN** (Kaggle fast profile) |
+| Training pipeline | `Trainer`, callbacks, YAML configs, `experiments/<run_id>/`  |
+| Kaggle workflow   | `notebooks/02_kaggle_hp_sweep.ipynb`, import/export zip      |
+| Figures           | `scripts/plot_curves.py` → `reports/figures/`                |
+| Live preview      | `scripts/watch_agent.py` — pygame window, no video file      |
+| Eval stats        | `scripts/evaluate.py` → `reports/figures/eval_summary.json`  |
+
+
+**Trained so far (imported from Kaggle):** `arch_light_cnn` + `kaggle_overrides` (64×64, stack=2). Best run: `hp_baseline` seed0 @ **300k** steps (Monitor peak ~**863**). Agent drives on straights; often stops on sharp turns until episode timeout (1000 steps).
+
+**Still TODO:** HP sweep (3 configs × more seeds @ 50k), architecture comparison, final report notebook/PDF.
 
 ---
 
-## Quick start
+## Versions
 
-> **Python 3.10 – 3.12** required. `stable-baselines3` does not yet support
-> Python 3.13 (the same constraint that applied to the previous project).
+- **Python:** 3.10 – 3.12 (use **3.12** in `.venv` — system 3.14 lacks Box2D)
+- **Install:** `pip install -e ".[dev]"` from repo root
+- **Box2D:** via `gymnasium[box2d]` (Windows: run inside activated `.venv`)
 
 ```bash
-# 1. Clone and create venv
 py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1            # PowerShell
-# source .venv/Scripts/activate         # Git Bash
+.\.venv\Scripts\Activate.ps1          # PowerShell
+# source .venv/Scripts/activate       # Git Bash
+pip install -e ".[dev]"
+```
 
-# 2. Install package (editable) + notebook + dev extras
-pip install -e ".[notebooks,dev]"
+Always check: `python -c "import sys; print(sys.executable)"` → path must include `.venv`.
 
-# 3. Verify everything imports cleanly
-pytest tests/ -k smoke
+---
 
-# 4. Smoke-train (5 000 steps, ~few minutes on CPU)
-python scripts/train_single.py \
-    --hp configs/hp_baseline.yaml \
-    --arch configs/arch_nature_cnn.yaml \
-    --seed 0 --timesteps 5000
+## Run the game (watch agent)
+
+After importing Kaggle outputs into `experiments/`:
+
+```bash
+# Auto-pick best checkpoint (highest Monitor peak)
+python scripts/watch_agent.py --arch arch_light_cnn --loop
+
+# Specific run (recommended after import)
+python scripts/watch_agent.py --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 --fast --episodes 5
+
+# Headless stats (report)
+python scripts/evaluate.py --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 --episodes 50 --deterministic
+```
+
+Reward lines print **after each episode** (~1000 steps). Use `--fast` to skip real-time pacing. Close pygame window or Ctrl+C to stop.
+
+**Import from Kaggle zip:**
+
+```bash
+python scripts/import_kaggle_outputs.py --zip ~/Downloads/kaggle_outputs.zip
+python scripts/plot_curves.py --arch arch_light_cnn --min-timesteps 50000
 ```
 
 ---
 
-## Repository layout
+## Kaggle training
 
-```
-racing-agent-gymnasium/
-├── PLAN.md                          # full implementation plan (READ ME FIRST)
-├── IDEA.md                          # high-level concept
-├── README.md                        # this file
-├── pyproject.toml                   # editable install metadata
-├── requirements.txt                 # pinned dependencies
-├── Makefile                         # make {setup, test, train, experiment, plot, report}
-├── .gitignore
-│
-├── src/racing_agent/                # importable Python package
-│   ├── env/        {make_env.py, wrappers.py}
-│   ├── policies/   {nature_cnn.py, custom_cnn.py}
-│   ├── training/   {train.py, callbacks.py, hyperparams.py}
-│   ├── evaluation/ {evaluator.py}
-│   └── utils/      {seeding.py, plotting.py, io.py}
-│
-├── configs/
-│   ├── hp_baseline.yaml             # 3 hyperparameter sets (Phase 4)
-│   ├── hp_high_lr.yaml
-│   ├── hp_large_batch.yaml
-│   ├── arch_nature_cnn.yaml         # 2 architectures (Phase 5)
-│   └── arch_deep_cnn.yaml
-│
-├── scripts/                         # thin CLIs (argparse)
-│   ├── train_single.py
-│   ├── run_experiment.py            # 3 configs × 10 seeds sweep
-│   ├── evaluate.py                  # deterministic / stochastic rollout
-│   ├── plot_curves.py               # mean ± std learning curves
-│   └── record_video.py              # demo mp4 of the best agent
-│
-├── notebooks/                       # 01_env / 02_analysis / 03_final_report
-├── experiments/                     # auto-populated training output
-├── models/                          # curated best checkpoints
-├── logs/                            # aggregate TensorBoard / monitor logs
-├── reports/                         # figures + final PDF
-├── tests/                           # pytest smoke + per-phase tests
-└── docs/                            # CarRacing docs, SAC docs, project PDF
-```
+1. GPU T4, attach code dataset, open `notebooks/02_kaggle_hp_sweep.ipynb` 
+2. Session 1 done: `MODE = "long_run"` (300k baseline seed0)
+3. **Next sessions:** `MODE = "sweep"` — 3 HP configs, 50k steps, `--max-runs 3` per session `[In progress - kaggle notebook running]`
+4. Download `kaggle_outputs.zip` → import locally (above)
+
+See `[kaggle/README.md](kaggle/README.md)` for details.
 
 ---
 
-## Common commands
+## Next steps
 
-| Goal                                  | Command                                                                             |
-| ------------------------------------- | ----------------------------------------------------------------------------------- |
-| Run the test suite                    | `pytest tests/`                                                                     |
-| Train one (config, seed)              | `python scripts/train_single.py --hp configs/hp_baseline.yaml --arch configs/arch_nature_cnn.yaml --seed 0 --timesteps 50000` |
-| Full HP sweep (Phase 4)               | `python scripts/run_experiment.py --configs hp_baseline hp_high_lr hp_large_batch --seeds 0..9 --timesteps 50000`             |
-| Architecture comparison (Phase 5)     | `python scripts/run_experiment.py --configs hp_baseline --arch arch_deep_cnn --seeds 0..9 --timesteps 50000`                  |
-| Evaluate the best agent (Phase 6)     | `python scripts/evaluate.py --episodes 50 --deterministic`                          |
-| Regenerate every figure               | `python scripts/plot_curves.py`                                                     |
-| Record a demo video                   | `python scripts/record_video.py --model models/best/best_model.zip --deterministic` |
-| Build the final PDF report            | `make report`                                                                       |
-| Open TensorBoard                      | `tensorboard --logdir experiments/`                                                 |
+1. **Kaggle sweep** — `MODE = "sweep"`, repeat until you have runs for `hp_baseline`, `hp_high_lr`, `hp_large_batch` (multiple seeds @ 50k) `[In progress - kaggle notebook running]`
+2. **Plot + eval** after each import — curves, `eval_summary.json`, spot-check with `watch_agent`
+3. **Phase 5** — architecture diagrams + optional `arch_deep_cnn` runs
+4. **Phase 7** — fill `notebooks/03_final_report.ipynb`, export PDF
 
 ---
 
-## Grading mapping
+## Useful commands
 
-This project covers the lecturer's full grading rubric. See [`PLAN.md`
-§ 1](PLAN.md#1-project-goal--grading-mapping) for the explicit
-requirement-to-deliverable mapping for each of the 4 / 6 / 8 point tiers.
 
-## Authors
+| Goal             | Command                                                                                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tests            | `pytest tests/`                                                                                                                                                                      |
+| Single train     | `python scripts/train_single.py --hp configs/hp_baseline.yaml --arch configs/arch_light_cnn.yaml --overrides configs/kaggle_overrides.yaml --seed 0 --timesteps 50000`               |
+| HP sweep (local) | `python scripts/run_experiment.py --configs hp_baseline hp_high_lr hp_large_batch --arch arch_light_cnn --overrides kaggle_overrides --seeds 0..9 --timesteps 50000 --skip-existing` |
+| Watch agent      | `make watch` or `python scripts/watch_agent.py --arch arch_light_cnn --loop`                                                                                                         |
+| Plot curves      | `python scripts/plot_curves.py --arch arch_light_cnn`                                                                                                                                |
 
-Inteligencja Obliczeniowa, sem. 6 — Projekt 5 (continuous spaces), 2-person team.
-Previous project (Projekt 4, discrete spaces):
-[xhamera1/crossy-road-gymnasium](https://github.com/xhamera1/crossy-road-gymnasium).
+
