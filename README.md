@@ -189,7 +189,7 @@ The assignment requires at least **two** CNN architectures. We implemented three
 
 Files: `configs/arch_nature_cnn.yaml`, `src/racing_agent/policies/nature_cnn.py`.
 
-NatureCNN architecture diagram
+![NatureCNN architecture diagram](reports/figures/arch_nature_cnn.png)
 
 ### 6.2 Architecture B — CustomDeepCNN
 
@@ -200,7 +200,7 @@ NatureCNN architecture diagram
 
 Files: `configs/arch_deep_cnn.yaml`, `src/racing_agent/policies/custom_cnn.py`.
 
-CustomDeepCNN architecture diagram
+![CustomDeepCNN architecture diagram](reports/figures/arch_deep_cnn.png)
 
 ### 6.3 Architecture C — LightCNN (Kaggle training)
 
@@ -211,7 +211,7 @@ CustomDeepCNN architecture diagram
 
 File: `configs/arch_light_cnn.yaml` — about **5–10× fewer** conv params than NatureCNN, ~42 min / 100k steps on T4.
 
-LightCNN architecture diagram (used in training)
+![LightCNN architecture diagram (used in training)](reports/figures/arch_light_cnn.png)
 
 **Why LightCNN for training:** a full 3×10×50k grid on NatureCNN would exceed the Kaggle budget (~30 h GPU/week); LightCNN enabled iteration and refinement of import, preview, and evaluation pipelines.
 
@@ -247,7 +247,7 @@ Chronology of **completed** runs (`hp_baseline`, `arch_light_cnn`, Kaggle overri
 
 Learning curve for `**hp_baseline`**, architecture `arch_light_cnn`, **3 seeds @ 100,000 steps** (mean ± std):
 
-Learning curve hp_baseline — mean ± std (3 seeds)
+![Learning curve hp_baseline — mean ± std (3 seeds)](reports/figures/learning_curve_hp_baseline.png)
 
 Large spread between seeds (seed1 weak, seed2 strong) confirms high SAC variance on CarRacing with limited steps. Clear improvement vs early 20k runs (negative rewards) — effect of increased step budget described in section 7.
 
@@ -318,11 +318,11 @@ All evaluation episodes hit **1000 steps** (timeout). seed02 has **higher mean a
 
 **Both agents compared (deterministic eval, 50 episodes):**
 
-Deterministic eval comparison seed0 vs seed02
+![Deterministic eval comparison seed0 vs seed02](reports/figures/eval_comparison.png)
 
 **Reward distribution — demo agent seed02:**
 
-Eval reward histogram — seed02 @ 100k
+![Eval reward histogram — seed02 @ 100k](reports/figures/eval_histogram_seed02.png)
 
 High standard deviation (~171) indicates large episode variability — some runs end poorly (negative reward), others very well (600+ pts).
 
@@ -350,19 +350,19 @@ Frames from live preview (`scripts/watch_agent.py`, demo agent **seed02 @ 100k**
 
 ### 9.1 Good Driving — Straight Section
 
-Agent on straight — car stays on track
+![Agent on straight — car stays on track](racing-screenshots/gameplay1.png)
 
 *Fig. 9.1 — Car drives down the centre of the track; tire marks visible. Agent maintains direction and collects progress reward.*
 
 ### 9.2 Entering a Turn
 
-Agent on turn — approaching track edge
+![Agent on turn — approaching track edge](racing-screenshots/gameplay2.png)
 
 *Fig. 9.2 — Car turning on a curve.*
 
 ### 9.3 Failure — Off Track
 
-Car on grass off track — no recovery
+![Car on grass off track — no recovery](racing-screenshots/fail-pojazd-wyjechal-za-tor.png)
 
 *Fig. 9.3 — Car fully left the asphalt. Episode effectively lost: no reward on grass, agent does not return to track.*
 

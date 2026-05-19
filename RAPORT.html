@@ -400,7 +400,6 @@ strong { font-weight: 600; }
 <li><strong>Głowy SAC:</strong> MLP <code>[256, 256]</code> (aktor i krytyki).</li>
 </ul>
 <p>Plik: <code>configs/arch_nature_cnn.yaml</code>, <code>src/racing_agent/policies/nature_cnn.py</code>.</p>
-<p>Schemat architektury NatureCNN</p>
 <p><img alt="Schemat architektury NatureCNN" src="reports/figures/arch_nature_cnn.png" /></p>
 <h3>6.2 Architektura B — CustomDeepCNN</h3>
 <ul>
@@ -410,7 +409,6 @@ strong { font-weight: 600; }
 <li><strong>Głowy SAC:</strong> MLP <code>[256, 256]</code> (identyczne jak w A — uczciwe porównanie).</li>
 </ul>
 <p>Plik: <code>configs/arch_deep_cnn.yaml</code>, <code>src/racing_agent/policies/custom_cnn.py</code>.</p>
-<p>Schemat architektury CustomDeepCNN</p>
 <p><img alt="Schemat architektury CustomDeepCNN" src="reports/figures/arch_deep_cnn.png" /></p>
 <h3>6.3 Architektura C — LightCNN (użyta w treningu Kaggle)</h3>
 <ul>
@@ -420,7 +418,6 @@ strong { font-weight: 600; }
 <li><strong>Głowy SAC:</strong> MLP <code>[128]</code>.</li>
 </ul>
 <p>Plik: <code>configs/arch_light_cnn.yaml</code> — ok. <strong>5–10× mniej</strong> parametrów conv niż NatureCNN, ~42 min / 100k kroków na T4.</p>
-<p>Schemat architektury LightCNN (użyta w treningu)</p>
 <p><img alt="Schemat architektury LightCNN" src="reports/figures/arch_light_cnn.png" /></p>
 <p><strong>Uzasadnienie wyboru LightCNN w treningu:</strong> pełna siatka 3×10×50k na NatureCNN przekraczałaby budżet Kaggle (~30 h GPU/tydzień); LightCNN umożliwił iterację i dopracowanie pipeline’u importu, podglądu i ewaluacji.</p>
 <hr />
@@ -506,7 +503,6 @@ strong { font-weight: 600; }
 <h2>8. Wyniki ilościowe</h2>
 <h3>8.1 Krzywa uczenia</h3>
 <p>Poniżej krzywa uczenia dla <code>**hp_baseline</code><strong>, architektura <code>arch_light_cnn</code>, </strong>3 seedy @ 100 000 kroków** (średnia ± odch. std.):</p>
-<p>Krzywa uczenia hp_baseline — mean ± std (3 seedy)</p>
 <p><img alt="Krzywa uczenia hp_baseline — mean ± std (3 seedy)" src="reports/figures/learning_curve_hp_baseline.png" /></p>
 <p>Duży rozstrzał między seedami (seed1 słaby, seed2 silny) potwierdza wysoką wariancję SAC na CarRacing przy ograniczonej liczbie kroków. Widać poprawę względem wczesnych runów @ 20k (nagrody ujemne) — efekt zwiększenia budżetu kroków opisany w sekcji 7.</p>
 <h3>8.2 Czas treningu</h3>
@@ -629,10 +625,8 @@ strong { font-weight: 600; }
 </table>
 <p>We wszystkich epizodach ewaluacji długość = <strong>1000 kroków</strong> (timeout). seed02 ma <strong>wyższą średnią i medianę</strong> niż seed0 @ 300k, co potwierdza wybór seed02 jako agenta demo mimo niższego peaku treningowego (774 vs 863).</p>
 <p><strong>Porównanie obu agentów (ewaluacja deterministyczna, 50 epizodów):</strong></p>
-<p>Porównanie ewaluacji deterministycznej seed0 vs seed02</p>
 <p><img alt="Porównanie ewaluacji deterministycznej seed0 vs seed02" src="reports/figures/eval_comparison.png" /></p>
 <p><strong>Rozkład nagród — agent demo seed02:</strong></p>
-<p>Histogram nagród ewaluacji — seed02 @ 100k</p>
 <p><img alt="Histogram nagród ewaluacji — seed02 @ 100k" src="reports/figures/eval_histogram_seed02.png" /></p>
 <p>Wysokie odchylenie standardowe (~171) wskazuje na dużą zmienność epizodów — część rund kończy się słabo (ujemna nagroda), część bardzo dobrze (ponad 600 pkt).</p>
 <h3>8.4 Porównanie dwóch agentów demo (podgląd)</h3>

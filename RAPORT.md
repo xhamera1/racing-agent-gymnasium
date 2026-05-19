@@ -203,9 +203,7 @@ Polecenie wymaga co najmniej **dwóch** architektur CNN. W repozytorium zaimplem
 
 Plik: `configs/arch_nature_cnn.yaml`, `src/racing_agent/policies/nature_cnn.py`.
 
-Schemat architektury NatureCNN
-
-Schemat architektury NatureCNN
+![Schemat architektury NatureCNN](reports/figures/arch_nature_cnn.png)
 
 ### 6.2 Architektura B — CustomDeepCNN
 
@@ -216,9 +214,7 @@ Schemat architektury NatureCNN
 
 Plik: `configs/arch_deep_cnn.yaml`, `src/racing_agent/policies/custom_cnn.py`.
 
-Schemat architektury CustomDeepCNN
-
-Schemat architektury CustomDeepCNN
+![Schemat architektury CustomDeepCNN](reports/figures/arch_deep_cnn.png)
 
 ### 6.3 Architektura C — LightCNN (użyta w treningu Kaggle)
 
@@ -229,9 +225,7 @@ Schemat architektury CustomDeepCNN
 
 Plik: `configs/arch_light_cnn.yaml` — ok. **5–10× mniej** parametrów conv niż NatureCNN, ~42 min / 100k kroków na T4.
 
-Schemat architektury LightCNN (użyta w treningu)
-
-Schemat architektury LightCNN
+![Schemat architektury LightCNN](reports/figures/arch_light_cnn.png)
 
 **Uzasadnienie wyboru LightCNN w treningu:** pełna siatka 3×10×50k na NatureCNN przekraczałaby budżet Kaggle (~30 h GPU/tydzień); LightCNN umożliwił iterację i dopracowanie pipeline’u importu, podglądu i ewaluacji.
 
@@ -267,9 +261,7 @@ Poniżej chronologia **zakończonych** runów (`hp_baseline`, `arch_light_cnn`, 
 
 Poniżej krzywa uczenia dla `**hp_baseline`**, architektura `arch_light_cnn`, **3 seedy @ 100 000 kroków** (średnia ± odch. std.):
 
-Krzywa uczenia hp_baseline — mean ± std (3 seedy)
-
-Krzywa uczenia hp_baseline — mean ± std (3 seedy)
+![Krzywa uczenia hp_baseline — mean ± std (3 seedy)](reports/figures/learning_curve_hp_baseline.png)
 
 Duży rozstrzał między seedami (seed1 słaby, seed2 silny) potwierdza wysoką wariancję SAC na CarRacing przy ograniczonej liczbie kroków. Widać poprawę względem wczesnych runów @ 20k (nagrody ujemne) — efekt zwiększenia budżetu kroków opisany w sekcji 7.
 
@@ -340,15 +332,11 @@ We wszystkich epizodach ewaluacji długość = **1000 kroków** (timeout). seed0
 
 **Porównanie obu agentów (ewaluacja deterministyczna, 50 epizodów):**
 
-Porównanie ewaluacji deterministycznej seed0 vs seed02
-
-Porównanie ewaluacji deterministycznej seed0 vs seed02
+![Porównanie ewaluacji deterministycznej seed0 vs seed02](reports/figures/eval_comparison.png)
 
 **Rozkład nagród — agent demo seed02:**
 
-Histogram nagród ewaluacji — seed02 @ 100k
-
-Histogram nagród ewaluacji — seed02 @ 100k
+![Histogram nagród ewaluacji — seed02 @ 100k](reports/figures/eval_histogram_seed02.png)
 
 Wysokie odchylenie standardowe (~171) wskazuje na dużą zmienność epizodów — część rund kończy się słabo (ujemna nagroda), część bardzo dobrze (ponad 600 pkt).
 
@@ -376,19 +364,19 @@ Poniższe kadry pochodzą z podglądu na żywo (`scripts/watch_agent.py`, agent 
 
 ### 9.1 Poprawna jazda — prosty odcinek
 
-Agent na prostej — pojazd trzyma się toru
+![Agent na prostej — pojazd trzyma się toru](racing-screenshots/gameplay1.png)
 
 *Rys. 9.1 — Pojazd jedzie środkiem toru; widoczne ślady opon. Agent utrzymuje kierunek i zbiera nagrodę za postęp po torze.*
 
 ### 9.2 Wejście w zakręt
 
-Agent na zakręcie — zbliża się do krawędzi toru
+![Agent na zakręcie — zbliża się do krawędzi toru](racing-screenshots/gameplay2.png)
 
 *Rys. 9.2 — Pojazd skręca na łuku*
 
 ### 9.3 Awaria — wyjazd poza tor
 
-Pojazd na trawie poza torem — brak możliwości powrotu
+![Pojazd na trawie poza torem — brak możliwości powrotu](racing-screenshots/fail-pojazd-wyjechal-za-tor.png)
 
 *Rys. 9.3 — Pojazd całkowicie opuścił asfalt. Epizod de facto stracony: brak nagrody za trawę, agent nie wraca na tor.*
 
