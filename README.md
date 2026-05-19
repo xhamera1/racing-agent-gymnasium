@@ -1,109 +1,126 @@
 # racing-agent-gymnasium
 
-SAC agent on **CarRacing-v3** (Gymnasium / Box2D). 
+SAC agent on **CarRacing-v3** (Gymnasium / Box2D). Course project — target **8/8 pts**, deadline **2026-06-04**.
 
-
-|          |                                                             |
-| -------- | ----------------------------------------------------------- |
-| **Env**  | `CarRacing-v3` — visual obs, continuous steer / gas / brake |
-| **Algo** | SAC + `CnnPolicy` (`stable-baselines3`)                     |
-| **Plan** | `[PLAN.md](PLAN.md)`                                        |
-
+| | |
+|---|---|
+| **Env** | `CarRacing-v3` — visual obs, continuous steer / gas / brake |
+| **Algo** | SAC + `CnnPolicy` (`stable-baselines3`) |
+| **Plan** | [`PLAN.md`](PLAN.md) |
 
 ---
 
 ## What we have
 
+| Done | Notes |
+|------|--------|
+| Env + wrappers | grayscale, resize, frame-stack → `src/racing_agent/env/` |
+| CNN policies | NatureCNN, CustomDeepCNN, **LightCNN** (Kaggle profile) |
+| Training pipeline | `Trainer`, callbacks, YAML configs, `experiments/<run_id>/` |
+| Kaggle workflow | `notebooks/02_kaggle_hp_sweep.ipynb`, import/export zip |
+| Figures | `scripts/plot_curves.py` → `reports/figures/` |
+| Live preview | `scripts/watch_agent.py` — pygame window |
+| Eval stats | `scripts/evaluate.py` → `reports/figures/eval_summary.json` |
 
-| Done              | Notes                                                        |
-| ----------------- | ------------------------------------------------------------ |
-| Env + wrappers    | grayscale, resize, frame-stack → `src/racing_agent/env/`     |
-| CNN policies      | NatureCNN, CustomDeepCNN, **LightCNN** (Kaggle fast profile) |
-| Training pipeline | `Trainer`, callbacks, YAML configs, `experiments/<run_id>/`  |
-| Kaggle workflow   | `notebooks/02_kaggle_hp_sweep.ipynb`, import/export zip      |
-| Figures           | `scripts/plot_curves.py` → `reports/figures/`                |
-| Live preview      | `scripts/watch_agent.py` — pygame window, no video file      |
-| Eval stats        | `scripts/evaluate.py` → `reports/figures/eval_summary.json`  |
+**Current checkpoints (imported, `arch_light_cnn`, 64×64, stack=2):**
 
+| Role | Run folder | Training peak | Live behaviour |
+|------|------------|---------------|----------------|
+| **Best demo agent** | `hp_baseline__arch_light_cnn__seed02__20260519-074316` | ~774 | Drives better overall; may overshoot sharp turns |
+| **Second (long run)** | `hp_baseline__arch_light_cnn__seed00__20260518-214604` | ~863 | Strong on straights; often **stops** on sharp turns |
 
-**Trained so far (imported from Kaggle):** `arch_light_cnn` + `kaggle_overrides` (64×64, stack=2). Best run: `hp_baseline` seed0 @ **300k** steps (Monitor peak ~**863**). Agent drives on straights; often stops on sharp turns until episode timeout (1000 steps).
+Use **seed02** for demo / report. Keep seed0 @ 300k for comparison (deterministic eval, training peak).
 
-**Still TODO:** HP sweep (3 configs × more seeds @ 50k), architecture comparison, final report notebook/PDF.
+**Paused for now:** no new training until report needs more HP curves. Existing models are enough for preview + eval.
 
 ---
 
 ## Versions
 
-- **Python:** 3.10 – 3.12 (use **3.12** in `.venv` — system 3.14 lacks Box2D)
+- **Python:** 3.10 – 3.12 (**use 3.12** in `.venv`; system 3.14 has no Box2D)
 - **Install:** `pip install -e ".[dev]"` from repo root
-- **Box2D:** via `gymnasium[box2d]` (Windows: run inside activated `.venv`)
 
 ```bash
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1          # PowerShell
 # source .venv/Scripts/activate       # Git Bash
 pip install -e ".[dev]"
+python -c "import sys; print(sys.executable)"   # must show .venv
 ```
-
-Always check: `python -c "import sys; print(sys.executable)"` → path must include `.venv`.
 
 ---
 
-## Run the game (watch agent)
+## Run the game — saved models
 
-After importing Kaggle outputs into `experiments/`:
+Always run from repo root with **activated `.venv`**.
+
+### Best agent (seed02 @ 100k) — recommended
 
 ```bash
-# Auto-pick best checkpoint (highest Monitor peak)
-python scripts/watch_agent.py --arch arch_light_cnn --loop
-
-# Specific run (recommended after import)
-python scripts/watch_agent.py --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 --fast --episodes 5
-
-# Headless stats (report)
-python scripts/evaluate.py --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 --episodes 50 --deterministic
+python scripts/watch_agent.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed02__20260519-074316 \
+  --fast --episodes 5
 ```
 
-Reward lines print **after each episode** (~1000 steps). Use `--fast` to skip real-time pacing. Close pygame window or Ctrl+C to stop.
+Loop until Ctrl+C:
 
-**Import from Kaggle zip:**
+```bash
+python scripts/watch_agent.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed02__20260519-074316 \
+  --loop
+```
+
+Headless stats (report):
+
+```bash
+python scripts/evaluate.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed02__20260519-074316 \
+  --episodes 50 --deterministic
+```
+
+### Second agent (seed0 @ 300k) — comparison / peak training reward
+
+```bash
+python scripts/watch_agent.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 \
+  --fast --episodes 5
+```
+
+```bash
+python scripts/evaluate.py \
+  --run-dir experiments/hp_baseline__arch_light_cnn__seed00__20260518-214604 \
+  --episodes 50 --deterministic
+```
+
+**Tips:** Reward lines appear **after each episode** (~1000 steps). `--fast` skips real-time delay. Close pygame or Ctrl+C to stop.
+
+**Do not use** `--arch arch_light_cnn` alone — auto-pick favours seed0 @ 300k (highest training peak), not seed02 (better driving).
+
+---
+
+## Import more Kaggle runs (optional)
 
 ```bash
 python scripts/import_kaggle_outputs.py --zip ~/Downloads/kaggle_outputs.zip
-python scripts/plot_curves.py --arch arch_light_cnn --min-timesteps 50000
+python scripts/plot_curves.py --arch arch_light_cnn --min-timesteps 100000
 ```
-
----
-
-## Kaggle training
-
-1. GPU T4, attach code dataset, open `notebooks/02_kaggle_hp_sweep.ipynb` 
-2. Session 1 done: `MODE = "long_run"` (300k baseline seed0)
-3. **Next sessions:** `MODE = "sweep"` — 3 HP configs, 50k steps, `--max-runs 3` per session `[In progress - kaggle notebook running]`
-4. Download `kaggle_outputs.zip` → import locally (above)
-
-See `[kaggle/README.md](kaggle/README.md)` for details.
-
----
-
-## Next steps
-
-1. **Kaggle sweep** — `MODE = "sweep"`, repeat until you have runs for `hp_baseline`, `hp_high_lr`, `hp_large_batch` (multiple seeds @ 50k) `[In progress - kaggle notebook running]`
-2. **Plot + eval** after each import — curves, `eval_summary.json`, spot-check with `watch_agent`
-3. **Phase 5** — architecture diagrams + optional `arch_deep_cnn` runs
-4. **Phase 7** — fill `notebooks/03_final_report.ipynb`, export PDF
 
 ---
 
 ## Useful commands
 
+| Goal | Command |
+|------|---------|
+| Tests | `pytest tests/` |
+| Plot curves | `python scripts/plot_curves.py --arch arch_light_cnn --min-timesteps 100000` |
+| Watch best (seed02) | see [Best agent](#best-agent-seed02--100k--recommended) above |
+| Watch second (seed0 300k) | see [Second agent](#second-agent-seed0--300k--comparison--peak-training-reward) above |
 
-| Goal             | Command                                                                                                                                                                              |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tests            | `pytest tests/`                                                                                                                                                                      |
-| Single train     | `python scripts/train_single.py --hp configs/hp_baseline.yaml --arch configs/arch_light_cnn.yaml --overrides configs/kaggle_overrides.yaml --seed 0 --timesteps 50000`               |
-| HP sweep (local) | `python scripts/run_experiment.py --configs hp_baseline hp_high_lr hp_large_batch --arch arch_light_cnn --overrides kaggle_overrides --seeds 0..9 --timesteps 50000 --skip-existing` |
-| Watch agent      | `make watch` or `python scripts/watch_agent.py --arch arch_light_cnn --loop`                                                                                                         |
-| Plot curves      | `python scripts/plot_curves.py --arch arch_light_cnn`                                                                                                                                |
+---
 
+## Next steps (report)
 
+1. `evaluate.py` on both runs above (det. + optional `--stochastic`) → `eval_summary.json`
+2. Paste learning curve + timing table from `reports/figures/`
+3. `notebooks/03_final_report.ipynb` — describe seed02 demo + seed0 comparison (stop vs fly-off on turns)
+4. Resume Kaggle sweep later if more HP data is needed

@@ -1,23 +1,22 @@
-# Runtime overrides for Kaggle sessions (merge via --overrides or notebook).
-# Goals: fewer pixels, less eval overhead, no mid-run checkpoints.
+# Kaggle fast profile — v2 (better corners: more frame history + mid-run eval).
+# Requires NEW training runs (incompatible with stack=2 checkpoints).
 name: kaggle_overrides
 
 env:
   n_envs: 1
   grayscale: true
-  resize_to: 64          # 84→64 saves ~40% pixels per frame
-  frame_stack: 2         # 4→2 halves CNN input channels
+  resize_to: 64
+  frame_stack: 4         # was 2 — agent sees turn approach earlier
   clip_reward: false
   continuous: true
   domain_randomize: false
 
-# SAC — slightly smaller replay for faster warm-up on short sessions.
 buffer_size: 50000
 learning_starts: 500
 
 trainer:
-  eval_every_timesteps: 50000      # single eval at end (Monitor CSV drives curves)
+  eval_every_timesteps: 25000   # save best_model before late-training collapse
   checkpoint_every_timesteps: 999999
-  n_eval_episodes: 2
+  n_eval_episodes: 3
   sb3_verbose: 0
   learn_log_interval: null
